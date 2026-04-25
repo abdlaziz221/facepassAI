@@ -1,59 +1,119 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# facepassAI — Plateforme de Gestion des Présences (ESP Dakar)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Application Laravel 12 de gestion des présences avec reconnaissance faciale.
 
-## About Laravel
+## Stack technique
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.2+
+- Laravel 12
+- MySQL (production) / SQLite (développement)
+- Tailwind CSS + Alpine.js (à venir, Sprint 0)
+- Microservice Python FastAPI pour la reconnaissance faciale (Sprint 3)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Prérequis
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP >= 8.2
+- Composer >= 2.x
+- Node.js >= 18 et npm
+- MySQL 8 (ou SQLite pour le dev local)
 
-## Learning Laravel
+## Installation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+```bash
+git clone https://github.com/abdlaziz221/facepassAI.git
+cd facepassAI
+composer install
+copy .env.example .env       # Linux/Mac : cp .env.example .env
+php artisan key:generate
+php artisan migrate
+npm install
+npm run dev
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Architecture MVC étendue : Services & Repositories
 
-## Laravel Sponsors
+Le projet suit une architecture en couches inspirée du DDD léger.
+Trois rôles, trois responsabilités, **jamais mélangées** :
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+| Couche | Dossier | Responsabilité |
+|---|---|---|
+| Controller | `app/Http/Controllers` | Recevoir la requête HTTP, valider via Form Request, appeler **un seul** Service, renvoyer la réponse (vue/JSON). **Aucune logique métier.** |
+| Service | `app/Services` | Logique **métier** : règles, calculs, orchestration de plusieurs repositories. **Ne touche jamais directement à Eloquent.** |
+| Repository | `app/Repositories` | Accès à la **persistance** (Eloquent). C'est le seul endroit où l'on appelle `Model::query()`, `find()`, `create()`, etc. |
 
-### Premium Partners
+### Convention de nommage
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+- **Interface du Repository** : `app/Repositories/Contracts/{Entity}RepositoryInterface.php`
+- **Implémentation du Repository** : `app/Repositories/{Entity}Repository.php`, hérite de `BaseRepository` et implémente l'interface.
+- **Service** : `app/Services/{Entity}Service.php`. Reçoit les interfaces de repositories par injection dans le constructeur.
 
-## Contributing
+### Liaison Interface ↔ Implémentation
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Toutes les liaisons sont déclarées dans `app/Providers/RepositoryServiceProvider.php` via la propriété `$bindings`. À chaque nouveau repository, ajouter une ligne :
 
-## Code of Conduct
+```php
+public array $bindings = [
+    UserRepositoryInterface::class => UserRepository::class,
+    // EmployeRepositoryInterface::class => EmployeRepository::class,
+];
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Exemple minimal
 
-## Security Vulnerabilities
+```php
+// Controller
+class UserController extends Controller
+{
+    public function __construct(private UserService $service) {}
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+    public function store(StoreUserRequest $request)
+    {
+        $user = $this->service->register($request->validated());
+        return redirect()->route('users.show', $user);
+    }
+}
 
-## License
+// Service
+class UserService
+{
+    public function __construct(private UserRepositoryInterface $users) {}
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+    public function register(array $data): User
+    {
+        $data['password'] = Hash::make($data['password']);
+        return $this->users->create($data);
+    }
+}
+
+// Repository
+class UserRepository extends BaseRepository implements UserRepositoryInterface
+{
+    public function __construct(User $model) { parent::__construct($model); }
+
+    public function findByEmail(string $email): ?User
+    {
+        return $this->model->newQuery()->where('email', $email)->first();
+    }
+}
+```
+
+### Pourquoi cette architecture ?
+
+- **Testabilité** : on peut mocker l'interface du Repository dans les tests du Service (pas besoin de base de données).
+- **Réutilisabilité** : le `BaseRepository` factorise les méthodes CRUD courantes (`all`, `find`, `create`, `update`, `delete`, `paginate`).
+- **Lisibilité** : un controller ne fait qu'une chose, un service une autre, un repository une troisième.
+
+## Équipe
+
+- Sprint planning : voir `Backlog_Plateforme_Presence_Laravel.xlsx` et le tableau Trello.
+- Diagramme UML : voir `projet_uml.pdf`.
+
+## Commandes utiles
+
+```bash
+php artisan serve              # Lancer le serveur local
+php artisan migrate            # Appliquer les migrations
+php artisan tinker             # Console PHP interactive
+php artisan test               # Lancer les tests
+composer dump-autoload         # Recharger l'autoloader après ajout de classes
+```
