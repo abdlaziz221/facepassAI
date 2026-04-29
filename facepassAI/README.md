@@ -6,29 +6,82 @@ Application Laravel 12 de gestion des présences avec reconnaissance faciale.
 
 - PHP 8.2+
 - Laravel 12
-- MySQL (production) / SQLite (développement)
-- Tailwind CSS + Alpine.js (à venir, Sprint 0)
+- MySQL 8 (WAMP/Laragon en local)
+- Tailwind CSS v4 + Alpine.js v3
 - Microservice Python FastAPI pour la reconnaissance faciale (Sprint 3)
 
 ## Prérequis
 
-- PHP >= 8.2
-- Composer >= 2.x
-- Node.js >= 18 et npm
-- MySQL 8 (ou SQLite pour le dev local)
+| Outil | Version min | Vérifier | Lien |
+|---|---|---|---|
+| PHP | 8.2 | `php -v` | [php.net/downloads](https://www.php.net/downloads) |
+| Composer | 2.x | `composer -V` | [getcomposer.org](https://getcomposer.org/download/) |
+| Node.js | 18 LTS | `node -v` | [nodejs.org](https://nodejs.org/) |
+| npm | 9+ | `npm -v` | (livré avec Node) |
+| MySQL | 8 | via WAMP / Laragon | [wampserver.com](https://www.wampserver.com/) |
+| Git | 2.x | `git --version` | [git-scm.com](https://git-scm.com/) |
+
+> 💡 Sous Windows, l'utilisation de **WAMP** ou **Laragon** est recommandée — ils embarquent déjà MySQL + phpMyAdmin.
 
 ## Installation
 
+> ⚠️ Le code Laravel se trouve dans le **sous-dossier** `facepassAI/` du repo. Toutes les commandes ci-dessous doivent être lancées depuis ce sous-dossier (sauf `git clone`).
+
+### 1. Cloner le projet
+
 ```bash
 git clone https://github.com/abdlaziz221/facepassAI.git
-cd facepassAI
-composer install
-copy .env.example .env       # Linux/Mac : cp .env.example .env
-php artisan key:generate
-php artisan migrate
-npm install
-npm run dev
+cd facepassAI/facepassAI
 ```
+
+### 2. Installer les dépendances
+
+```bash
+composer install        # Dépendances PHP
+npm install             # Dépendances JS (Alpine, Vite, Tailwind)
+```
+
+### 3. Configurer l'environnement
+
+```bash
+copy .env.example .env       # Windows
+# cp .env.example .env       # Linux / macOS
+php artisan key:generate
+```
+
+Édite ensuite `.env` pour configurer la base de données :
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=facepassai
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+### 4. Créer la base de données
+
+Démarre WAMP/Laragon, ouvre **phpMyAdmin** (`http://localhost/phpmyadmin/`) et crée la base :
+- Nom : `facepassai`
+- Interclassement : `utf8mb4_unicode_ci`
+
+### 5. Lancer les migrations
+
+```bash
+php artisan migrate
+```
+
+### 6. Démarrer les serveurs
+
+Dans deux terminaux séparés :
+
+```bash
+php artisan serve      # Backend Laravel sur http://127.0.0.1:8000
+npm run dev            # Vite (hot reload assets) sur http://localhost:5173
+```
+
+Ouvre **http://127.0.0.1:8000** dans ton navigateur. ✅
 
 ## Architecture MVC étendue : Services & Repositories
 
@@ -103,17 +156,49 @@ class UserRepository extends BaseRepository implements UserRepositoryInterface
 - **Réutilisabilité** : le `BaseRepository` factorise les méthodes CRUD courantes (`all`, `find`, `create`, `update`, `delete`, `paginate`).
 - **Lisibilité** : un controller ne fait qu'une chose, un service une autre, un repository une troisième.
 
-## Équipe
-
-- Sprint planning : voir `Backlog_Plateforme_Presence_Laravel.xlsx` et le tableau Trello.
-- Diagramme UML : voir `projet_uml.pdf`.
-
 ## Commandes utiles
 
+### Backend Laravel
+
 ```bash
-php artisan serve              # Lancer le serveur local
-php artisan migrate            # Appliquer les migrations
-php artisan tinker             # Console PHP interactive
-php artisan test               # Lancer les tests
-composer dump-autoload         # Recharger l'autoloader après ajout de classes
+php artisan serve              # Démarre le serveur local (port 8000)
+php artisan migrate            # Applique les migrations
+php artisan migrate:fresh      # Supprime tout et rejoue les migrations (⚠️ perte de données)
+php artisan migrate:fresh --seed   # + lance les seeders
+php artisan migrate:status     # État des migrations
+php artisan tinker             # Console PHP interactive (tester du code Laravel à la volée)
+php artisan route:list         # Liste toutes les routes définies
+php artisan make:model Foo -mfsc   # Génère Model + Migration + Factory + Seeder + Controller
+php artisan test               # Lance la suite de tests
+php artisan config:clear       # Vide le cache de configuration
+php artisan optimize:clear     # Vide tous les caches (config, routes, vues, events)
+composer dump-autoload         # Recharge l'autoloader après ajout de classes
 ```
+
+### Frontend (Vite + Tailwind + Alpine)
+
+```bash
+npm install                    # Installe les dépendances JS
+npm run dev                    # Compile en mode dev avec hot reload (à laisser tourner)
+npm run build                  # Compile pour la production (assets minifiés dans public/build/)
+```
+
+### Git (workflow d'équipe)
+
+```bash
+git checkout -b ma-feature     # Crée une branche depuis l'actuelle
+git status                     # Voir les fichiers modifiés
+git add <fichier>              # Stage un fichier précis (éviter `git add .`)
+git commit -m "feat: ..."      # Commit avec convention (feat / fix / docs / refactor / test)
+git push origin ma-feature     # Push la branche sur GitHub
+git pull --rebase origin main  # Récupère les changements de main proprement
+```
+
+## Équipe
+
+| Membre 
+|Alioune Badara Barry
+| Serigne Abdoul Aziz Ndiaye
+| Souleymane Sirima Mbodj 
+| Mohamed Moctar Niang
+
