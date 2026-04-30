@@ -15,11 +15,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
+        // Créer un utilisateur de test (optionnel, pour Breeze plus tard)
         User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
+        ]);
+
+        // Appeler nos seeders personnalisés
+        $this->call([
+            EmployeSeeder::class,
+            PointageSeeder::class,
         ]);
     }
 }
