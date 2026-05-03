@@ -3,39 +3,56 @@
 namespace Database\Factories;
 
 use App\Models\Employe;
-use App\Models\JoursTravail;
 use App\Models\Pointage;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends Factory<Pointage>
- */
 class PointageFactory extends Factory
 {
+    protected $model = Pointage::class;
+
     public function definition(): array
     {
+        $types = ['arrivee', 'debut_pause', 'fin_pause', 'depart'];
+        $statuts = ['valide', 'en_retard', 'depart_anticipe'];
+        
         return [
             'employe_id' => Employe::factory(),
-            'jours_travail_id' => JoursTravail::factory(),
-            'date_heure' => fake()->dateTimeBetween('-30 days', 'now'),
-            'type' => fake()->randomElement(['arrivee', 'debut_pause', 'fin_pause', 'depart']),
-            'statut' => fake()->randomElement(['valide', 'en_retard', 'depart_anticipe']),
+            'jours_travail_id' => null,  // Peut être null au début
+            'date_heure' => $this->faker->dateTimeBetween('-1 month', 'now'),
+            'type' => $this->faker->randomElement($types),
+            'statut' => $this->faker->randomElement($statuts),
         ];
     }
 
-    public function arrivee(): static
+    // Pointage en retard
+    public function enRetard(): static
     {
-        return $this->state(fn () => [
-            'type' => 'arrivee',
-            'statut' => fake()->randomElement(['valide', 'en_retard']),
+        return $this->state(fn (array $attributes) => [
+            'statut' => 'en_retard',
         ]);
     }
 
-    public function depart(): static
+    // Pointage départ anticipé
+    public function departAnticipe(): static
     {
-        return $this->state(fn () => [
-            'type' => 'depart',
-            'statut' => fake()->randomElement(['valide', 'depart_anticipe']),
+        return $this->state(fn (array $attributes) => [
+            'statut' => 'depart_anticipe',
+        ]);
+    }
+
+    // Pointage validé (normal)
+    public function valide(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'statut' => 'valide',
+        ]);
+    }
+
+    // Pointage pour un type spécifique
+    public function deType(string $type): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => $type,
         ]);
     }
 }

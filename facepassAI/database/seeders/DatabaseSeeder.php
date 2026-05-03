@@ -22,12 +22,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([
-            UserHierarchySeeder::class,
+        // Créer un utilisateur de test (optionnel, pour Breeze plus tard)
+        User::factory()->create([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+        ]);
 
-            // À réactiver au Sprint 2 (après refonte de la table employes) :
-            // EmployeSeeder::class,
-            // PointageSeeder::class,
+        // Appeler nos seeders personnalisés
+        $this->call([
+            EmployeSeeder::class,
+            PointageSeeder::class,
         ]);
     }
 }
