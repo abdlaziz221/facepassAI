@@ -20,6 +20,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Schema::defaultStringLength(191);
+        // 125 = limite max pour un index unique sur (name, guard_name)
+        // en utf8mb4 sur MySQL avec ROW_FORMAT=COMPACT (125 * 4 * 2 = 1000 octets).
+        Schema::defaultStringLength(125);
     }
 }
