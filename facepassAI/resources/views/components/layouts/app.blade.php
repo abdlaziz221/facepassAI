@@ -18,12 +18,59 @@
             </div>
 
             <nav style="padding: 1rem; flex: 1;">
-                <a href="/employes" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">👥 Employés</a>
-                <a href="/pointages" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📍 Pointages</a>
-                <a href="/absences" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📅 Absences</a>
-                <a href="/rapports" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📊 Rapports</a>
-                <a href="/logs" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">🔍 Logs</a>
+
+                @php $role = Auth::user()->role ?? 'none'; @endphp
+
+                {{-- Liens communs à tous --}}
+                <a href="/dashboard" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">🏠 Accueil</a>
+
+                {{-- Employé --}}
+                @if($role === 'employe')
+                    <a href="/pointage" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📍 Mon Pointage</a>
+                    <a href="/absences/creer" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📅 Mes Absences</a>
+                    <a href="/salaire" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">💰 Mon Salaire</a>
+                @endif
+
+                {{-- Consultant --}}
+                @if($role === 'consultant')
+                    <a href="/employes" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">👥 Employés</a>
+                    <a href="/pointages" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📍 Pointages</a>
+                    <a href="/retards" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">⏰ Retards</a>
+                    <a href="/rapports" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📊 Rapports</a>
+                @endif
+
+                {{-- Gestionnaire --}}
+                @if($role === 'gestionnaire')
+                    <a href="/employes" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">👥 Employés</a>
+                    <a href="/absences" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📅 Absences</a>
+                    <a href="/pointages" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📍 Pointages</a>
+                    <a href="/retards" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">⏰ Retards</a>
+                    <a href="/rapports" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📊 Rapports</a>
+                @endif
+
+                {{-- Administrateur --}}
+                @if($role === 'administrateur')
+                    <a href="/employes" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">👥 Employés</a>
+                    <a href="/gestionnaires" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">🧑‍💼 Gestionnaires</a>
+                    <a href="/pointages" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📍 Pointages</a>
+                    <a href="/absences" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📅 Absences</a>
+                    <a href="/jours-travail" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">🗓️ Jours de travail</a>
+                    <a href="/rapports" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">📊 Rapports</a>
+                    <a href="/logs" style="display: block; padding: 0.6rem 1rem; border-radius: 0.5rem; color: white; text-decoration: none; margin-bottom: 0.25rem;">🔍 Logs système</a>
+                @endif
+
             </nav>
+
+            {{-- Déconnexion --}}
+            <div style="padding: 1rem; border-top: 1px solid #374151;">
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" style="width: 100%; padding: 0.6rem 1rem; background: #374151; color: white; border: none; border-radius: 0.5rem; cursor: pointer; text-align: left;">
+                        🚪 Se déconnecter
+                    </button>
+                </form>
+            </div>
+
         </aside>
 
         {{-- Contenu principal --}}

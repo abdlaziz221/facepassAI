@@ -8,9 +8,6 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Page d'accueil
 |--------------------------------------------------------------------------
-| Redirige automatiquement :
-|  - vers /dashboard si l'utilisateur est connecté
-|  - vers /login sinon
 */
 Route::get('/', function () {
     return Auth::check()
@@ -20,7 +17,7 @@ Route::get('/', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Dashboard (utilisateurs connectés)
+| Dashboard central (redirige selon le rôle)
 |--------------------------------------------------------------------------
 */
 Route::get('/dashboard', function () {
@@ -33,6 +30,42 @@ Route::get('/dashboard', function () {
         default          => view('dashboard'),
     };
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+/*
+|--------------------------------------------------------------------------
+| Dashboard Administrateur
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', fn() => view('admin.dashboard'))->name('dashboard');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Dashboard Gestionnaire
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->prefix('gestionnaire')->name('gestionnaire.')->group(function () {
+    Route::get('/dashboard', fn() => view('gestionnaire.dashboard'))->name('dashboard');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Dashboard Consultant
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->prefix('consultant')->name('consultant.')->group(function () {
+    Route::get('/dashboard', fn() => view('consultant.dashboard'))->name('dashboard');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Dashboard Employé
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->prefix('employe')->name('employe.')->group(function () {
+    Route::get('/dashboard', fn() => view('employe.dashboard'))->name('dashboard');
+});
 
 /*
 |--------------------------------------------------------------------------
