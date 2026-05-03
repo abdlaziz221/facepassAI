@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -11,15 +10,24 @@ class DatabaseSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Seed the application's database.
+     * Seeders du projet facepassAI.
+     *
+     * NOTE Sprint 1 :
+     *   - On démarre avec UserHierarchySeeder (hiérarchie auth + STI)
+     *   - EmployeSeeder / PointageSeeder sont mis en pause :
+     *     ils seront repris au Sprint 2 (Gestion des Employés) une fois
+     *     que la table 'employes' aura été refondue en table de PROFIL
+     *     (matricule, poste, departement, salaire_brut, photo_faciale)
+     *     liée à 'users' par user_id.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->call([
+            UserHierarchySeeder::class,
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+            // À réactiver au Sprint 2 (après refonte de la table employes) :
+            // EmployeSeeder::class,
+            // PointageSeeder::class,
         ]);
     }
 }
