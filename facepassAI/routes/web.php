@@ -24,7 +24,14 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $user = Auth::user();
+    return match($user->role ?? 'none') {
+        'administrateur' => redirect()->route('admin.dashboard'),
+        'gestionnaire'   => redirect()->route('gestionnaire.dashboard'),
+        'consultant'     => redirect()->route('consultant.dashboard'),
+        'employe'        => redirect()->route('employe.dashboard'),
+        default          => view('dashboard'),
+    };
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 /*
