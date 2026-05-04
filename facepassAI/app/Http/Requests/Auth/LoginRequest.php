@@ -12,30 +12,20 @@ use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'email'    => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
     }
 
     /**
-     * Attempt to authenticate the request's credentials.
-     *
      * @throws ValidationException
      */
     public function authenticate(): void
@@ -46,7 +36,16 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => 'Identifiants incorrects. Veuillez vérifier votre identifiant et votre mot de passe.',
+                'email' => 'Identifiants incorrects. Veuillez verifier votre identifiant et votre mot de passe.',
+            ]);
+        }
+
+        if (! Auth::user()->est_actif) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => "Votre compte a ete desactive. Veuillez contacter l'administrateur.",
             ]);
         }
 
@@ -54,11 +53,6 @@ class LoginRequest extends FormRequest
     }
 
     /**
-     * Vérifie que la requête n'est pas bloquée par le rate limiter.
-     *
-     * Sprint 1, tâche 6 (US-012) : limite à 3 tentatives échouées,
-     * blocage temporaire avec message clair en français.
-     *
      * @throws ValidationException
      */
     public function ensureIsNotRateLimited(): void
@@ -73,13 +67,10 @@ class LoginRequest extends FormRequest
         $minutes = (int) ceil($seconds / 60);
 
         throw ValidationException::withMessages([
-            'email' => "Trop de tentatives de connexion. Veuillez réessayer dans {$minutes} minute(s) (compte temporairement bloqué).",
+            'email' => "Trop de tentatives de connexion. Veuillez reessayer dans {$minutes} minute(s) (compte temporairement bloque).",
         ]);
     }
 
-    /**
-     * Get the rate limiting throttle key for the request.
-     */
     public function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
