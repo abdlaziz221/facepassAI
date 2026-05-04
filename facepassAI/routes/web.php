@@ -41,6 +41,48 @@ Route::middleware('auth')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
+| Routes protégées par rôle (Sprint 1, US-015)
+|--------------------------------------------------------------------------
+| Sous-groupes utilisant les aliases 'role' et 'permission' enregistrés
+| dans bootstrap/app.php. Les controllers métier seront ajoutés
+| progressivement aux Sprints 2-6.
+*/
+
+// === ADMINISTRATEUR uniquement ===
+Route::middleware(['auth', 'role:administrateur'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        // Tests / placeholders Sprint 6
+        Route::get('/test', fn () => '<h1>✅ Espace Administrateur</h1><p>Accès autorisé. Routes Sprint 6 à venir : gestionnaires, logs.</p>')
+            ->name('test');
+    });
+
+// === GESTIONNAIRE et plus haut ===
+Route::middleware(['auth', 'role:gestionnaire|administrateur'])
+    ->prefix('gestion')
+    ->name('gestion.')
+    ->group(function () {
+        Route::get('/test', fn () => '<h1>✅ Espace Gestionnaire</h1><p>Accès autorisé. Routes Sprint 2-4 à venir : employés, horaires, validation absences.</p>')
+            ->name('test');
+    });
+
+// === CONSULTANT et plus haut ===
+Route::middleware(['auth', 'role:consultant|gestionnaire|administrateur'])
+    ->prefix('consultation')
+    ->name('consultation.')
+    ->group(function () {
+        Route::get('/test', fn () => '<h1>✅ Espace Consultation</h1><p>Accès autorisé. Routes Sprint 5 à venir : rapports, exports.</p>')
+            ->name('test');
+    });
+
+// === Exemple : route protégée par PERMISSION (et pas seulement rôle) ===
+Route::get('/employes/create', fn () => '<h1>Formulaire ajout employé</h1><p>Sprint 2 — TODO</p>')
+    ->middleware(['auth', 'permission:employes.create'])
+    ->name('employes.create');
+
+/*
+|--------------------------------------------------------------------------
 | Routes d'authentification (Breeze)
 |--------------------------------------------------------------------------
 */
