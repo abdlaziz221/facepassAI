@@ -31,8 +31,11 @@
             </a>
 
             @can('employes.view')
-                <a href="#" class="link-muted"
-                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                <a href="{{ route('employes.index') }}"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+                          color: {{ request()->routeIs('employes.*') ? 'white' : '#9ca3af' }};
+                          background: {{ request()->routeIs('employes.*') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
+                          text-decoration: none; transition: all .15s;">
                     Employés
                 </a>
             @endcan

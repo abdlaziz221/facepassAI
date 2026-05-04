@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmployeController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -9,9 +10,6 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Page d'accueil
 |--------------------------------------------------------------------------
-| Redirige automatiquement :
-|  - vers /dashboard si l'utilisateur est connecté
-|  - vers /login sinon
 */
 Route::get('/', function () {
     return Auth::check()
@@ -30,58 +28,54 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 
 /*
 |--------------------------------------------------------------------------
-| Profil utilisateur
+| Profil utilisateur (auto-suppression désactivée — Sprint 6)
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    // Sprint 1 : auto-suppression désactivée pour des raisons de sécurité.
-    // Seul l'admin pourra supprimer un compte (Sprint 6, US-090).
-    // Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 /*
 |--------------------------------------------------------------------------
-| Routes protégées par rôle (Sprint 1, US-015)
+| CRUD Employés (Sprint 2, US-020/021/022)
 |--------------------------------------------------------------------------
-| Sous-groupes utilisant les aliases 'role' et 'permission' enregistrés
-| dans bootstrap/app.php. Les controllers métier seront ajoutés
-| progressivement aux Sprints 2-6.
+| L'autorisation est gérée par EmployeProfilePolicy (auto-discovery)
+| via authorizeResource() dans le constructeur du controller.
+| Le paramètre {profile} est lié au modèle EmployeProfile.
 */
+Route::middleware('auth')
+    ->resource('employes', EmployeController::class)
+    ->parameters(['employes' => 'profile']);
 
-// === ADMINISTRATEUR uniquement ===
+/*
+|--------------------------------------------------------------------------
+| Routes protégées par rôle (Sprint 1, US-015) — exemples
+|--------------------------------------------------------------------------
+*/
 Route::middleware(['auth', 'role:administrateur'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        // Tests / placeholders Sprint 6
         Route::get('/test', fn () => '<h1>✅ Espace Administrateur</h1><p>Accès autorisé. Routes Sprint 6 à venir : gestionnaires, logs.</p>')
             ->name('test');
     });
 
-// === GESTIONNAIRE et plus haut ===
 Route::middleware(['auth', 'role:gestionnaire|administrateur'])
     ->prefix('gestion')
     ->name('gestion.')
     ->group(function () {
-        Route::get('/test', fn () => '<h1>✅ Espace Gestionnaire</h1><p>Accès autorisé. Routes Sprint 2-4 à venir : employés, horaires, validation absences.</p>')
+        Route::get('/test', fn () => '<h1>✅ Espace Gestionnaire</h1><p>Accès autorisé. Routes Sprint 2-4 à venir.</p>')
             ->name('test');
     });
 
-// === CONSULTANT et plus haut ===
 Route::middleware(['auth', 'role:consultant|gestionnaire|administrateur'])
     ->prefix('consultation')
     ->name('consultation.')
     ->group(function () {
-        Route::get('/test', fn () => '<h1>✅ Espace Consultation</h1><p>Accès autorisé. Routes Sprint 5 à venir : rapports, exports.</p>')
+        Route::get('/test', fn () => '<h1>✅ Espace Consultation</h1><p>Accès autorisé. Routes Sprint 5 à venir.</p>')
             ->name('test');
     });
-
-// === Exemple : route protégée par PERMISSION (et pas seulement rôle) ===
-Route::get('/employes/create', fn () => '<h1>Formulaire ajout employé</h1><p>Sprint 2 — TODO</p>')
-    ->middleware(['auth', 'permission:employes.create'])
-    ->name('employes.create');
 
 /*
 |--------------------------------------------------------------------------
