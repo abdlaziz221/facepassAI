@@ -2,41 +2,51 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
+use Database\Factories\EmployeFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
-class Employe extends Model
+/**
+ * Sous-type STI : un Employé est un User dont users.role = 'employe'.
+ *
+ * - Pointe vers la table 'users' (même que User)
+ * - Filtre auto via global scope
+ * - Force role = 'employe' à la création
+ * - Sprint 2 : relation hasOne vers EmployeProfile (matricule, poste, salaire)
+ */
+class Employe extends User
 {
+    /** @use HasFactory<EmployeFactory> */
     use HasFactory;
 
-    protected $fillable = [
-        'matricule', 'nom', 'prenom', 'email', 'password', 'role',
-        'poste', 'departement', 'salaire_brut', 'photo_faciale', 'est_actif'
-    ];
+    protected $table = 'users';
 
-    protected $hidden = [
-        'password',
-    ];
-
-    protected $casts = [
-        'est_actif' => 'boolean',
-        'salaire_brut' => 'float',
-    ];
-
-    // Mutateur pour hasher automatiquement le mot de passe
-    public function setPasswordAttribute($value)
+    protected static function booted(): void
     {
-        $this->attributes['password'] = Hash::make($value);
+        // Filtre automatique : Employe::all() ne renvoie que les employés.
+        static::addGlobalScope('only_employes', function (Builder $query) {
+            $query->where('role', Role::Employe->value);
+        });
+
+        // À la création, on force le rôle.
+        static::creating(function (self $user) {
+            $user->role = Role::Employe;
+        });
     }
 
-    public function pointages()
+    protected static function newFactory(): EmployeFactory
     {
-        return $this->hasMany(Pointage::class);
+        return EmployeFactory::new();
     }
 
-    public function demandesAbsence()
+    /**
+     * Profil métier de l'employé (matricule, poste, département,
+     * salaire brut, photo faciale). Sprint 2, US-020.
+     */
+    public function profile(): HasOne
     {
-        return $this->hasMany(DemandeAbsence::class);
+        return $this->hasOne(EmployeProfile::class, 'user_id');
     }
 }

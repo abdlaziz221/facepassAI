@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use App\Notifications\ResetPasswordFr;
 use Database\Factories\UserFactory;
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -16,9 +16,12 @@ class User extends Authenticatable
     use HasFactory, Notifiable, HasRoles;
 
     /**
-     * Mapping role → classe enfant (STI).
-     * Utilisé par newFromBuilder() pour retourner le bon sous-type
-     * quand on lit depuis la base.
+     * Guard utilisé par spatie/laravel-permission.
+     */
+    protected string $guard_name = 'web';
+
+    /**
+     * Mapping role => classe enfant (STI).
      *
      * @var array<string, class-string<User>>
      */
@@ -68,30 +71,31 @@ class User extends Authenticatable
     }
 
     /**
-     * Polymorphisme STI : quand Eloquent reconstruit un modèle depuis
-     * la base, on retourne directement la sous-classe correspondante.
-     *
-     * Exemple : User::find(3) → renvoie une instance de Gestionnaire
-     * si users.role = 'gestionnaire'.
+     * Polymorphisme STI.
+     * Quand Eloquent reconstruit un modèle depuis la base, on retourne
+     * directement la sous-classe correspondante au rôle.
      */
     public function newFromBuilder($attributes = [], $connection = null)
     {
-        $role = is_object($attributes) ? ($attributes->role ?? null)
-                                       : ($attributes['role']  ?? null);
+        $role = is_object($attributes)
+            ? ($attributes->role ?? null)
+            : ($attributes['role'] ?? null);
 
         $class = static::$childClasses[$role] ?? static::class;
 
-        // Évite la récursion infinie si on est déjà dans la bonne classe.
-        if ($class !== static::class && static::class === self::class) {
-            $model = new $class;
-        } else {
-            $model = $this->newInstance([], true);
+        if ($class !== static::class) {
+            return (new $class)->newFromBuilder($attributes, $connection);
         }
 
-        $model->setRawAttributes((array) $attributes, true);
-        $model->setConnection($connection ?: $this->getConnectionName());
-        $model->fireModelEvent('retrieved', false);
+        return parent::newFromBuilder($attributes, $connection);
+    }
 
-        return $model;
+    /**
+     * Override de la notification de reset (Sprint 1, US-013).
+     * Utilise notre notification française ResetPasswordFr.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordFr($token));
     }
 }

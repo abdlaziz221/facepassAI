@@ -147,9 +147,110 @@
             }
 
             .error-text { color: #fca5a5; font-size: 13px; margin-top: 6px; }
+
+            /* === CURSEUR FACE-TRACKER (suit la souris, style face detection) === */
+            .cursor-tracker {
+                position: fixed;
+                top: 0; left: 0;
+                width: 56px; height: 56px;
+                pointer-events: none;
+                z-index: 9999;
+                transform: translate(-100px, -100px);
+                opacity: 0;
+                transition: opacity .25s ease;
+                will-change: transform;
+                filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
+            }
+            .cursor-tracker.active { opacity: 1; }
+            .cursor-tracker svg { width: 100%; height: 100%; overflow: visible; }
+            .cursor-tracker .frame {
+                animation: tracker-rotate 6s linear infinite;
+                transform-origin: 28px 28px;
+                transform-box: fill-box;
+            }
+            .cursor-tracker .pulse-ring {
+                animation: tracker-pulse 1.6s ease-in-out infinite;
+                transform-origin: 28px 28px;
+                transform-box: fill-box;
+            }
+            @keyframes tracker-rotate {
+                from { transform: rotate(0deg); }
+                to   { transform: rotate(360deg); }
+            }
+            @keyframes tracker-pulse {
+                0%, 100% { opacity: 0.25; transform: scale(1); }
+                50%      { opacity: 0.6; transform: scale(1.18); }
+            }
+            /* Désactivé sur écrans tactiles */
+            @media (pointer: coarse) {
+                .cursor-tracker { display: none !important; }
+            }
         </style>
     </head>
     <body class="bg-aurora">
         {{ $slot }}
+
+        {{-- ====================================================
+             CURSEUR FACE-TRACKER : 4 coins de scan rotatifs +
+             cercle pulsant + point central. Suit la souris en
+             smooth (lerp 18%). Désactivé sur tactile.
+             ==================================================== --}}
+        <div class="cursor-tracker" id="cursor-tracker" aria-hidden="true">
+            <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="cur-grad" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%"  stop-color="#a5b4fc"/>
+                        <stop offset="100%" stop-color="#67e8f9"/>
+                    </linearGradient>
+                </defs>
+                <g class="frame">
+                    {{-- 4 coins de cadre de scan --}}
+                    <g fill="none" stroke="url(#cur-grad)" stroke-width="1.8" stroke-linecap="round">
+                        <path d="M4 14 V4 H14" />
+                        <path d="M42 4 H52 V14" />
+                        <path d="M4 42 V52 H14" />
+                        <path d="M42 52 H52 V42" />
+                    </g>
+                </g>
+                {{-- Cercle pulsant (analyse) --}}
+                <circle class="pulse-ring" cx="28" cy="28" r="14"
+                        fill="none" stroke="url(#cur-grad)"
+                        stroke-width="1" opacity="0.4"/>
+                {{-- Point central --}}
+                <circle cx="28" cy="28" r="2.2" fill="#67e8f9" opacity="0.95"/>
+            </svg>
+        </div>
+
+        <script>
+        (function () {
+            // Pas de cursor tracker sur tactile (mobile/tablette)
+            if (window.matchMedia('(pointer: coarse)').matches) return;
+
+            const cursor = document.getElementById('cursor-tracker');
+            if (!cursor) return;
+
+            let mouseX = -100, mouseY = -100;
+            let cursorX = -100, cursorY = -100;
+
+            document.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                cursor.classList.add('active');
+            }, { passive: true });
+
+            document.addEventListener('mouseleave', () => {
+                cursor.classList.remove('active');
+            });
+
+            function animate() {
+                // Lerp pour un suivi smooth
+                cursorX += (mouseX - cursorX) * 0.18;
+                cursorY += (mouseY - cursorY) * 0.18;
+                cursor.style.transform = `translate(${cursorX - 28}px, ${cursorY - 28}px)`;
+                requestAnimationFrame(animate);
+            }
+            animate();
+        })();
+        </script>
     </body>
 </html>

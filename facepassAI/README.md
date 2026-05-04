@@ -1,204 +1,321 @@
-# facepassAI — Plateforme de Gestion des Présences (ESP Dakar)
+# FacePass AI
 
-Application Laravel 12 de gestion des présences avec reconnaissance faciale.
+> **Plateforme de gestion des présences par reconnaissance faciale**
+> Projet de fin d'études — École Supérieure Polytechnique de Dakar · Groupe G03 · 2025-2026
+> Encadrante : Dr. Fatou Ngom
+
+---
+
+## Sommaire
+
+1. [Présentation](#présentation)
+2. [Stack technique](#stack-technique)
+3. [Prérequis](#prérequis)
+4. [Installation locale](#installation-locale)
+5. [Commandes utiles](#commandes-utiles)
+6. [Architecture](#architecture)
+7. [Conventions de nommage](#conventions-de-nommage)
+8. [Comptes de démo](#comptes-de-démo)
+9. [Équipe](#équipe)
+
+---
+
+## Présentation
+
+FacePass AI est une plateforme web de **gestion des présences en entreprise** basée sur la **reconnaissance faciale**. Elle permet :
+
+- Le pointage instantané des employés via leur visage
+- La gestion des absences et des horaires de travail
+- La consultation des pointages, retards et départs anticipés
+- La génération de rapports (PDF / Excel)
+- Le calcul du salaire en fonction des présences
+- Une console d'administration complète (logs, gestionnaires, etc.)
+
+L'application repose sur **4 rôles hiérarchiques** : `Employé` < `Consultant` < `Gestionnaire` < `Administrateur`.
+
+---
 
 ## Stack technique
 
-- PHP 8.2+
-- Laravel 12
-- MySQL 8 (WAMP/Laragon en local)
-- Tailwind CSS v4 + Alpine.js v3
-- Microservice Python FastAPI pour la reconnaissance faciale (Sprint 3)
+| Couche | Technologie |
+|---|---|
+| Backend | **Laravel 12** (PHP 8.2+) |
+| Base de données | **MySQL 8** (utf8mb4_unicode_ci) |
+| Frontend | **Tailwind CSS v3** + **Alpine.js v3** + **Vite** |
+| Auth & RBAC | **Laravel Breeze** + **spatie/laravel-permission** |
+| Reconnaissance faciale | Microservice Python **FastAPI** (Sprint 3) |
+| Exports | **barryvdh/laravel-dompdf** + **maatwebsite/excel** (Sprint 5) |
+| Audit | **spatie/laravel-activitylog** (Sprint 6) |
+
+---
 
 ## Prérequis
 
-| Outil | Version min | Vérifier | Lien |
-|---|---|---|---|
-| PHP | 8.2 | `php -v` | [php.net/downloads](https://www.php.net/downloads) |
-| Composer | 2.x | `composer -V` | [getcomposer.org](https://getcomposer.org/download/) |
-| Node.js | 18 LTS | `node -v` | [nodejs.org](https://nodejs.org/) |
-| npm | 9+ | `npm -v` | (livré avec Node) |
-| MySQL | 8 | via WAMP / Laragon | [wampserver.com](https://www.wampserver.com/) |
-| Git | 2.x | `git --version` | [git-scm.com](https://git-scm.com/) |
+À installer sur votre machine :
 
-> 💡 Sous Windows, l'utilisation de **WAMP** ou **Laragon** est recommandée — ils embarquent déjà MySQL + phpMyAdmin.
+| Outil | Version min. | Vérifier |
+|---|---|---|
+| **PHP** | 8.2 | `php --version` |
+| **Composer** | 2.x | `composer --version` |
+| **Node.js** | 18+ | `node --version` |
+| **NPM** | 9+ | `npm --version` |
+| **MySQL** | 8.0 | `mysql --version` |
+| **Git** | 2.x | `git --version` |
 
-## Installation
+> **Windows** : Laragon ou WAMP recommandé pour Apache+MySQL+PHP en 1 clic.
+> **macOS** : Herd ou MAMP.
+> **Linux** : `apt install php8.2 composer mysql-server nodejs npm`.
 
-> ⚠️ Le code Laravel se trouve dans le **sous-dossier** `facepassAI/` du repo. Toutes les commandes ci-dessous doivent être lancées depuis ce sous-dossier (sauf `git clone`).
+---
 
-### 1. Cloner le projet
+## Installation locale
 
 ```bash
+# 1. Cloner le dépôt
 git clone https://github.com/abdlaziz221/facepassAI.git
 cd facepassAI/facepassAI
-```
 
-### 2. Installer les dépendances
+# 2. Installer les dépendances PHP et JS
+composer install
+npm install
 
-```bash
-composer install        # Dépendances PHP
-npm install             # Dépendances JS (Alpine, Vite, Tailwind)
-```
-
-### 3. Configurer l'environnement
-
-```bash
-copy .env.example .env       # Windows
-# cp .env.example .env       # Linux / macOS
+# 3. Configurer l'environnement
+cp .env.example .env
 php artisan key:generate
+
+# 4. Créer la base de données MySQL
+mysql -u root -e "CREATE DATABASE facepassai CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 5. Configurer .env
+# Éditer .env et renseigner :
+#   APP_NAME="FacePass AI"
+#   APP_LOCALE=fr
+#   DB_DATABASE=facepassai
+#   DB_USERNAME=root
+#   DB_PASSWORD=
+#   MAIL_MAILER=log
+
+# 6. Migrer + seeder la base
+php artisan migrate:fresh --seed
+
+# 7. Compiler les assets
+npm run build       # ou `npm run dev` en développement
+
+# 8. Lancer le serveur
+php artisan serve
+# → http://127.0.0.1:8000
 ```
 
-Édite ensuite `.env` pour configurer la base de données :
-
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=facepassai
-DB_USERNAME=root
-DB_PASSWORD=
-```
-
-### 4. Créer la base de données
-
-Démarre WAMP/Laragon, ouvre **phpMyAdmin** (`http://localhost/phpmyadmin/`) et crée la base :
-- Nom : `facepassai`
-- Interclassement : `utf8mb4_unicode_ci`
-
-### 5. Lancer les migrations
-
-```bash
-php artisan migrate
-```
-
-### 6. Démarrer les serveurs
-
-Dans deux terminaux séparés :
-
-```bash
-php artisan serve      # Backend Laravel sur http://127.0.0.1:8000
-npm run dev            # Vite (hot reload assets) sur http://localhost:5173
-```
-
-Ouvre **http://127.0.0.1:8000** dans ton navigateur. ✅
-
-## Architecture MVC étendue : Services & Repositories
-
-Le projet suit une architecture en couches inspirée du DDD léger.
-Trois rôles, trois responsabilités, **jamais mélangées** :
-
-| Couche | Dossier | Responsabilité |
-|---|---|---|
-| Controller | `app/Http/Controllers` | Recevoir la requête HTTP, valider via Form Request, appeler **un seul** Service, renvoyer la réponse (vue/JSON). **Aucune logique métier.** |
-| Service | `app/Services` | Logique **métier** : règles, calculs, orchestration de plusieurs repositories. **Ne touche jamais directement à Eloquent.** |
-| Repository | `app/Repositories` | Accès à la **persistance** (Eloquent). C'est le seul endroit où l'on appelle `Model::query()`, `find()`, `create()`, etc. |
-
-### Convention de nommage
-
-- **Interface du Repository** : `app/Repositories/Contracts/{Entity}RepositoryInterface.php`
-- **Implémentation du Repository** : `app/Repositories/{Entity}Repository.php`, hérite de `BaseRepository` et implémente l'interface.
-- **Service** : `app/Services/{Entity}Service.php`. Reçoit les interfaces de repositories par injection dans le constructeur.
-
-### Liaison Interface ↔ Implémentation
-
-Toutes les liaisons sont déclarées dans `app/Providers/RepositoryServiceProvider.php` via la propriété `$bindings`. À chaque nouveau repository, ajouter une ligne :
-
-```php
-public array $bindings = [
-    UserRepositoryInterface::class => UserRepository::class,
-    // EmployeRepositoryInterface::class => EmployeRepository::class,
-];
-```
-
-### Exemple minimal
-
-```php
-// Controller
-class UserController extends Controller
-{
-    public function __construct(private UserService $service) {}
-
-    public function store(StoreUserRequest $request)
-    {
-        $user = $this->service->register($request->validated());
-        return redirect()->route('users.show', $user);
-    }
-}
-
-// Service
-class UserService
-{
-    public function __construct(private UserRepositoryInterface $users) {}
-
-    public function register(array $data): User
-    {
-        $data['password'] = Hash::make($data['password']);
-        return $this->users->create($data);
-    }
-}
-
-// Repository
-class UserRepository extends BaseRepository implements UserRepositoryInterface
-{
-    public function __construct(User $model) { parent::__construct($model); }
-
-    public function findByEmail(string $email): ?User
-    {
-        return $this->model->newQuery()->where('email', $email)->first();
-    }
-}
-```
-
-### Pourquoi cette architecture ?
-
-- **Testabilité** : on peut mocker l'interface du Repository dans les tests du Service (pas besoin de base de données).
-- **Réutilisabilité** : le `BaseRepository` factorise les méthodes CRUD courantes (`all`, `find`, `create`, `update`, `delete`, `paginate`).
-- **Lisibilité** : un controller ne fait qu'une chose, un service une autre, un repository une troisième.
+---
 
 ## Commandes utiles
 
-### Backend Laravel
-
 ```bash
-php artisan serve              # Démarre le serveur local (port 8000)
-php artisan migrate            # Applique les migrations
-php artisan migrate:fresh      # Supprime tout et rejoue les migrations (⚠️ perte de données)
-php artisan migrate:fresh --seed   # + lance les seeders
-php artisan migrate:status     # État des migrations
-php artisan tinker             # Console PHP interactive (tester du code Laravel à la volée)
-php artisan route:list         # Liste toutes les routes définies
-php artisan make:model Foo -mfsc   # Génère Model + Migration + Factory + Seeder + Controller
-php artisan test               # Lance la suite de tests
-php artisan config:clear       # Vide le cache de configuration
-php artisan optimize:clear     # Vide tous les caches (config, routes, vues, events)
-composer dump-autoload         # Recharge l'autoloader après ajout de classes
+# Développement
+php artisan serve                     # Lancer le serveur web (port 8000)
+npm run dev                           # Watcher Vite (rafraîchit auto les assets)
+
+# Base de données
+php artisan migrate                   # Appliquer les migrations
+php artisan migrate:fresh --seed      # Reset complet + seeders de démo
+php artisan db:seed                   # Re-seeder uniquement
+php artisan tinker                    # REPL Laravel (pour tester en console)
+
+# Cache
+php artisan optimize:clear            # Vider tous les caches (config, routes, vues)
+php artisan view:clear                # Vider seulement les vues compilées
+
+# Tests
+php artisan test                      # Lancer tous les tests
+php artisan test --filter=RbacTest    # Lancer un test spécifique
+
+# Composer / NPM
+composer dump-autoload                # Régénérer l'autoload PHP
+npm install                           # Réinstaller les dépendances JS
 ```
 
-### Frontend (Vite + Tailwind + Alpine)
+---
 
-```bash
-npm install                    # Installe les dépendances JS
-npm run dev                    # Compile en mode dev avec hot reload (à laisser tourner)
-npm run build                  # Compile pour la production (assets minifiés dans public/build/)
+## Architecture
+
+Le projet suit une architecture **en couches** pour séparer la logique métier de l'accès aux données :
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Controller     ←  reçoit les requêtes HTTP, valide, répond     │
+│  ↓                                                               │
+│  Service        ←  contient la logique métier (business rules)  │
+│  ↓                                                               │
+│  Repository     ←  abstrait l'accès à la base de données        │
+│  ↓                                                               │
+│  Model          ←  Eloquent (mapping DB ↔ objets PHP)           │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-### Git (workflow d'équipe)
+**Pourquoi cette architecture ?**
 
-```bash
-git checkout -b ma-feature     # Crée une branche depuis l'actuelle
-git status                     # Voir les fichiers modifiés
-git add <fichier>              # Stage un fichier précis (éviter `git add .`)
-git commit -m "feat: ..."      # Commit avec convention (feat / fix / docs / refactor / test)
-git push origin ma-feature     # Push la branche sur GitHub
-git pull --rebase origin main  # Récupère les changements de main proprement
+- **Testabilité** : on peut mocker un repository pour tester un service sans BDD
+- **Réutilisabilité** : un service peut être utilisé par plusieurs controllers (web + API)
+- **Maintenabilité** : changer de SGBD ou de source de données = ne toucher qu'au repository
+
+### STI (Single Table Inheritance)
+
+La hiérarchie utilisateurs utilise la **STI** : une seule table `users` avec une colonne `role` (enum) qui détermine la sous-classe PHP. Voir `app/Models/User.php` et ses 4 enfants (`Employe`, `Consultant`, `Gestionnaire`, `Administrateur`).
+
+---
+
+## Conventions de nommage
+
+### Fichiers et classes
+
+| Type | Convention | Exemple |
+|---|---|---|
+| **Modèle** | `PascalCase` au singulier | `Employe.php`, `Pointage.php` |
+| **Controller** | `PascalCase` + suffixe `Controller` | `EmployeController.php` |
+| **Service** | `PascalCase` + suffixe `Service` | `PayrollService.php`, `FaceRecognitionService.php` |
+| **Repository** | `PascalCase` + suffixe `Repository` | `UserRepository.php` |
+| **Interface (contrat)** | `PascalCase` + suffixe `Interface` | `UserRepositoryInterface.php` |
+| **Form Request** | `PascalCase` + suffixe `Request` | `StoreEmployeRequest.php` |
+| **Migration** | snake_case + verbe descriptif | `2026_05_03_120000_add_role_and_est_actif_to_users_table.php` |
+| **Factory** | `PascalCase` + suffixe `Factory` | `EmployeFactory.php` |
+| **Seeder** | `PascalCase` + suffixe `Seeder` | `RolePermissionSeeder.php` |
+| **Notification** | `PascalCase` + suffixe optionnel | `ResetPasswordFr.php` |
+| **Middleware** | `PascalCase` (verbe descriptif) | `CheckAccountActive.php` |
+| **Vue Blade** | snake_case ou kebab-case | `employes/index.blade.php` |
+| **Composant Blade** | kebab-case | `text-input.blade.php` |
+
+### Variables et méthodes
+
+| Type | Convention | Exemple |
+|---|---|---|
+| **Variable PHP** | `camelCase` | `$totalEmployes`, `$dateArrivee` |
+| **Méthode** | `camelCase`, verbe d'abord | `calculerSalaireBrut()`, `findActiveEmployes()` |
+| **Constante / enum** | `UPPER_SNAKE` ou `PascalCase` | `Role::Employe`, `MAX_TENTATIVES = 3` |
+| **Colonne BDD** | `snake_case` | `est_actif`, `salaire_brut`, `created_at` |
+| **Table BDD** | `snake_case` au pluriel | `users`, `pointages`, `demandes_absence` |
+| **Route nommée** | `kebab.case` ou `dot.case` | `employes.index`, `password.request` |
+
+### Permissions spatie
+
+Format : `<domaine>.<action>` (ex : `employes.create`, `pointages.view-all`).
+
+Voir `database/seeders/RolePermissionSeeder.php` pour la liste complète (23 permissions).
+
+### Exemples minimalistes
+
+**Service** (`app/Services/UserService.php`) :
+
+```php
+namespace App\Services;
+
+use App\Repositories\Contracts\UserRepositoryInterface;
+
+class UserService
+{
+    public function __construct(
+        private UserRepositoryInterface $userRepository
+    ) {}
+
+    public function createUserFromRequest(array $data): User
+    {
+        // Logique métier ici (validation custom, hashage, événements...)
+        return $this->userRepository->create($data);
+    }
+}
 ```
+
+**Repository contract** (`app/Repositories/Contracts/UserRepositoryInterface.php`) :
+
+```php
+namespace App\Repositories\Contracts;
+
+interface UserRepositoryInterface
+{
+    public function find(int $id): ?User;
+    public function create(array $data): User;
+    public function update(int $id, array $data): bool;
+    public function delete(int $id): bool;
+}
+```
+
+**Repository implémentation** (`app/Repositories/UserRepository.php`) :
+
+```php
+namespace App\Repositories;
+
+use App\Models\User;
+use App\Repositories\Contracts\UserRepositoryInterface;
+
+class UserRepository implements UserRepositoryInterface
+{
+    public function find(int $id): ?User
+    {
+        return User::find($id);
+    }
+
+    public function create(array $data): User
+    {
+        return User::create($data);
+    }
+
+    // ...
+}
+```
+
+**Binding** (`app/Providers/RepositoryServiceProvider.php`) :
+
+```php
+public function register(): void
+{
+    $this->app->bind(
+        \App\Repositories\Contracts\UserRepositoryInterface::class,
+        \App\Repositories\UserRepository::class,
+    );
+}
+```
+
+---
+
+## Comptes de démo
+
+Après `php artisan migrate:fresh --seed`, 4 comptes nominatifs sont créés (mot de passe identique : **`password`**) :
+
+| Email | Rôle | Permissions |
+|---|---|---|
+| `admin@facepass.test` | Administrateur | Toutes (23) |
+| `gestionnaire@facepass.test` | Gestionnaire | 19 (CRUD employés, validation absences, horaires, KPI) |
+| `consultant@facepass.test` | Consultant | 12 (lecture étendue + rapports) |
+| `employe@facepass.test` | Employé | 7 (pointages perso, absences perso, salaire perso) |
+
+Le seeder crée aussi 8 employés et 2 consultants supplémentaires avec des données aléatoires.
+
+---
 
 ## Équipe
 
-| Membre 
-|Alioune Badara Barry
-| Serigne Abdoul Aziz Ndiaye
-| Souleymane Sirima Mbodj 
-| Mohamed Moctar Niang
+| Membre | Rôle dans le projet |
+|---|---|
+| **Alioune Badara Barry** | Chef de projet, gestion Trello |
+| **Souleymane Sirima Mbodj** | Backend Laravel |
+| **Serigne Abdoul Aziz Ndiaye** | Repository GitHub |
+| **Mohamed Moctar Niang** | Frontend / dashboards |
 
+**Encadrante** : Dr. Fatou Ngom — ESP Dakar
+
+---
+
+## Statut Sprints
+
+- ✅ **Sprint 0** — Initialisation (Laravel, MySQL, Tailwind, Alpine, Git, README)
+- ✅ **Sprint 1** — Authentification & RBAC (Breeze, spatie permissions, STI, dashboards par rôle, page login custom, throttling, mot de passe oublié, déconnexion sécurisée)
+- ⏳ **Sprint 2** — Gestion des employés (CRUD)
+- ⏳ **Sprint 3** — Pointage biométrique (microservice Python)
+- ⏳ **Sprint 4** — Horaires & demandes d'absence
+- ⏳ **Sprint 5** — Consultations & rapports (PDF, Excel)
+- ⏳ **Sprint 6** — Salaire & administration
+- ⏳ **Sprint 7** — Qualité, sécurité & performance
+- ⏳ **Sprint 8** — Déploiement & documentation
+
+---
+
+*FacePass AI · ESP Dakar · 2025-2026*

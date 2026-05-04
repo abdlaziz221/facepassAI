@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmployeController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -17,66 +19,63 @@ Route::get('/', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Dashboard central (redirige selon le rôle)
+| Dashboard adaptatif selon le rôle (Sprint 1, US-016)
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard', function () {
-    $user = Auth::user();
-    return match($user->role ?? 'none') {
-        'administrateur' => redirect()->route('admin.dashboard'),
-        'gestionnaire'   => redirect()->route('gestionnaire.dashboard'),
-        'consultant'     => redirect()->route('consultant.dashboard'),
-        'employe'        => redirect()->route('employe.dashboard'),
-        default          => view('dashboard'),
-    };
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth'])
+    ->name('dashboard');
 
 /*
 |--------------------------------------------------------------------------
-| Dashboard Administrateur
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', fn() => view('admin.dashboard'))->name('dashboard');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Dashboard Gestionnaire
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth'])->prefix('gestionnaire')->name('gestionnaire.')->group(function () {
-    Route::get('/dashboard', fn() => view('gestionnaire.dashboard'))->name('dashboard');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Dashboard Consultant
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth'])->prefix('consultant')->name('consultant.')->group(function () {
-    Route::get('/dashboard', fn() => view('consultant.dashboard'))->name('dashboard');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Dashboard Employé
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth'])->prefix('employe')->name('employe.')->group(function () {
-    Route::get('/dashboard', fn() => view('employe.dashboard'))->name('dashboard');
-});
-
-/*
-|--------------------------------------------------------------------------
-| Profil utilisateur
+| Profil utilisateur (auto-suppression désactivée — Sprint 6)
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+/*
+|--------------------------------------------------------------------------
+| CRUD Employés (Sprint 2, US-020/021/022)
+|--------------------------------------------------------------------------
+| L'autorisation est gérée par EmployeProfilePolicy (auto-discovery)
+| via authorizeResource() dans le constructeur du controller.
+| Le paramètre {profile} est lié au modèle EmployeProfile.
+*/
+Route::middleware('auth')
+    ->resource('employes', EmployeController::class)
+    ->parameters(['employes' => 'profile']);
+
+/*
+|--------------------------------------------------------------------------
+| Routes protégées par rôle (Sprint 1, US-015) — exemples
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'role:administrateur'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/test', fn () => '<h1>✅ Espace Administrateur</h1><p>Accès autorisé. Routes Sprint 6 à venir : gestionnaires, logs.</p>')
+            ->name('test');
+    });
+
+Route::middleware(['auth', 'role:gestionnaire|administrateur'])
+    ->prefix('gestion')
+    ->name('gestion.')
+    ->group(function () {
+        Route::get('/test', fn () => '<h1>✅ Espace Gestionnaire</h1><p>Accès autorisé. Routes Sprint 2-4 à venir.</p>')
+            ->name('test');
+    });
+
+Route::middleware(['auth', 'role:consultant|gestionnaire|administrateur'])
+    ->prefix('consultation')
+    ->name('consultation.')
+    ->group(function () {
+        Route::get('/test', fn () => '<h1>✅ Espace Consultation</h1><p>Accès autorisé. Routes Sprint 5 à venir.</p>')
+            ->name('test');
+    });
 
 /*
 |--------------------------------------------------------------------------
