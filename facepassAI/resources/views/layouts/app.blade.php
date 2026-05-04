@@ -93,6 +93,30 @@
                 color: #6ee7b7;
             }
 
+            /* === Inputs (formulaires sombres) === */
+            .input-dark {
+                background: rgba(0, 0, 0, 0.35);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                color: #ffffff;
+                width: 100%;
+                padding: 14px 16px;
+                border-radius: 10px;
+                font-size: 14px;
+                font-family: inherit;
+                outline: none;
+                transition: all .2s;
+            }
+            .input-dark::placeholder { color: #6b7280; }
+            .input-dark:hover {
+                border-color: rgba(255, 255, 255, 0.16);
+            }
+            .input-dark:focus {
+                border-color: rgba(129, 140, 248, 0.6);
+                box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.14);
+                background: rgba(0, 0, 0, 0.5);
+            }
+            .error-text { color: #fca5a5; font-size: 13px; margin-top: 6px; }
+
             /* === Bouton primaire === */
             .btn-primary {
                 display: inline-flex;
@@ -206,6 +230,43 @@
             }
             .quick-action .title { font-weight: 600; color: white; font-size: 14px; }
             .quick-action .subtitle { font-size: 12px; color: #6b7280; margin-top: 2px; }
+
+            /* === CURSEUR FACE-TRACKER (suit la souris, style face detection) === */
+            .cursor-tracker {
+                position: fixed;
+                top: 0; left: 0;
+                width: 56px; height: 56px;
+                pointer-events: none;
+                z-index: 9999;
+                transform: translate(-100px, -100px);
+                opacity: 0;
+                transition: opacity .25s ease;
+                will-change: transform;
+                filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.5));
+            }
+            .cursor-tracker.active { opacity: 1; }
+            .cursor-tracker svg { width: 100%; height: 100%; overflow: visible; }
+            .cursor-tracker .frame {
+                animation: tracker-rotate 6s linear infinite;
+                transform-origin: 28px 28px;
+                transform-box: fill-box;
+            }
+            .cursor-tracker .pulse-ring {
+                animation: tracker-pulse 1.6s ease-in-out infinite;
+                transform-origin: 28px 28px;
+                transform-box: fill-box;
+            }
+            @keyframes tracker-rotate {
+                from { transform: rotate(0deg); }
+                to   { transform: rotate(360deg); }
+            }
+            @keyframes tracker-pulse {
+                0%, 100% { opacity: 0.25; transform: scale(1); }
+                50%      { opacity: 0.6; transform: scale(1.18); }
+            }
+            @media (pointer: coarse) {
+                .cursor-tracker { display: none !important; }
+            }
         </style>
     </head>
     <body class="bg-aurora">
@@ -221,5 +282,58 @@
 
             {{ $slot }}
         </main>
+
+        {{-- Curseur face-tracker --}}
+        <div class="cursor-tracker" id="cursor-tracker" aria-hidden="true">
+            <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="cur-grad-app" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%"  stop-color="#a5b4fc"/>
+                        <stop offset="100%" stop-color="#67e8f9"/>
+                    </linearGradient>
+                </defs>
+                <g class="frame">
+                    <g fill="none" stroke="url(#cur-grad-app)" stroke-width="1.8" stroke-linecap="round">
+                        <path d="M4 14 V4 H14" />
+                        <path d="M42 4 H52 V14" />
+                        <path d="M4 42 V52 H14" />
+                        <path d="M42 52 H52 V42" />
+                    </g>
+                </g>
+                <circle class="pulse-ring" cx="28" cy="28" r="14"
+                        fill="none" stroke="url(#cur-grad-app)"
+                        stroke-width="1" opacity="0.4"/>
+                <circle cx="28" cy="28" r="2.2" fill="#67e8f9" opacity="0.95"/>
+            </svg>
+        </div>
+
+        <script>
+        (function () {
+            if (window.matchMedia('(pointer: coarse)').matches) return;
+            const cursor = document.getElementById('cursor-tracker');
+            if (!cursor) return;
+
+            let mouseX = -100, mouseY = -100;
+            let cursorX = -100, cursorY = -100;
+
+            document.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                cursor.classList.add('active');
+            }, { passive: true });
+
+            document.addEventListener('mouseleave', () => {
+                cursor.classList.remove('active');
+            });
+
+            function animate() {
+                cursorX += (mouseX - cursorX) * 0.18;
+                cursorY += (mouseY - cursorY) * 0.18;
+                cursor.style.transform = `translate(${cursorX - 28}px, ${cursorY - 28}px)`;
+                requestAnimationFrame(animate);
+            }
+            animate();
+        })();
+        </script>
     </body>
 </html>

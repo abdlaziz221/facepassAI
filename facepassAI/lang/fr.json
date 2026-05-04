@@ -32,5 +32,14 @@
     "Before proceeding, please check your email for a verification link.": "Avant de continuer, vérifiez votre boîte mail : un lien de confirmation y a été envoyé.",
     "If you did not receive the email": "Si vous n'avez pas reçu l'email",
     "click here to request another": "cliquez ici pour en demander un autre",
-    "A new verification link has been sent to the email address you provided during registration.": "Un nouveau lien de vérification vient d'être envoyé à votre adresse email."
+    "A new verification link has been sent to the email address you provided during registration.": "Un nouveau lien de vérification vient d'être envoyé à votre adresse email.",
+    "Please wait before retrying.": "Veuillez patienter avant de réessayer.",
+    "We have emailed your password reset link.": "Le lien de réinitialisation a été envoyé à votre adresse email.",
+    "We have emailed your password reset link!": "Le lien de réinitialisation a été envoyé à votre adresse email.",
+    "Your password has been reset.": "Votre mot de passe a été réinitialisé avec succès.",
+    "Your password has been reset!": "Votre mot de passe a été réinitialisé avec succès.",
+    "This password reset token is invalid.": "Ce lien de réinitialisation est invalide ou a expiré.",
+    "We can't find a user with that email address.": "Aucun compte ne correspond à cette adresse email.",
+    "The provided credentials are incorrect.": "Les identifiants fournis sont incorrects.",
+    "The password is incorrect.": "Le mot de passe est incorrect."
 }

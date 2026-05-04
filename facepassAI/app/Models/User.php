@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use App\Notifications\ResetPasswordFr;
 use Database\Factories\UserFactory;
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -17,14 +17,11 @@ class User extends Authenticatable
 
     /**
      * Guard utilisé par spatie/laravel-permission.
-     * Doit matcher le guard des rôles & permissions créés.
      */
     protected string $guard_name = 'web';
 
     /**
-     * Mapping role → classe enfant (STI).
-     * Utilisé par newFromBuilder() pour retourner le bon sous-type
-     * quand on lit depuis la base.
+     * Mapping role => classe enfant (STI).
      *
      * @var array<string, class-string<User>>
      */
@@ -74,31 +71,31 @@ class User extends Authenticatable
     }
 
     /**
-     * Polymorphisme STI : quand Eloquent reconstruit un modèle depuis
-     * la base, on retourne directement la sous-classe correspondante.
-     *
-     * Exemple : User::find(3) → renvoie une instance de Gestionnaire
-     * si users.role = 'gestionnaire'.
-     *
-     * On délègue à parent::newFromBuilder pour s'assurer que $exists
-     * et tous les flags Eloquent internes sont correctement positionnés
-     * (sinon save() ferait INSERT au lieu d'UPDATE → conflit clé primaire).
+     * Polymorphisme STI.
+     * Quand Eloquent reconstruit un modèle depuis la base, on retourne
+     * directement la sous-classe correspondante au rôle.
      */
     public function newFromBuilder($attributes = [], $connection = null)
     {
-        $role = is_object($attributes) ? ($attributes->role ?? null)
-                                       : ($attributes['role']  ?? null);
+        $role = is_object($attributes)
+            ? ($attributes->role ?? null)
+            : ($attributes['role'] ?? null);
 
         $class = static::$childClasses[$role] ?? static::class;
 
-        // Si la classe attendue diffère de la classe actuelle (cas
-        // typique : User::find() qui doit retourner Administrateur),
-        // on délègue à cette sous-classe.
         if ($class !== static::class) {
             return (new $class)->newFromBuilder($attributes, $connection);
         }
 
-        // Sinon, comportement Eloquent standard (set exists = true, etc.)
         return parent::newFromBuilder($attributes, $connection);
+    }
+
+    /**
+     * Override de la notification de reset (Sprint 1, US-013).
+     * Utilise notre notification française ResetPasswordFr.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordFr($token));
     }
 }
