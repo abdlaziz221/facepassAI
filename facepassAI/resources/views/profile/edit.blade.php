@@ -98,17 +98,6 @@
                 </svg>
                 Sécurité
             </button>
-            <button @click="tab = 'danger'"
-                    :style="tab === 'danger' ? 'background: rgba(239,68,68,0.18); color: #fca5a5;' : 'color: #9ca3af;'"
-                    style="padding: 10px 18px; border-radius: 8px; border: none;
-                           font-size: 13px; font-weight: 600; cursor: pointer;
-                           background: transparent; transition: all .15s;
-                           display: flex; align-items: center; gap: 8px;">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-                </svg>
-                Zone dangereuse
-            </button>
         </div>
 
         {{-- ============================================================
@@ -151,25 +140,12 @@
             </div>
         </div>
 
-        {{-- Onglet Zone dangereuse --}}
-        <div x-show="tab === 'danger'" x-transition.opacity x-cloak style="margin-top: 24px; display: none;">
-            <div class="glass" style="padding: 32px; border-radius: 16px; max-width: 640px;
-                                       border-color: rgba(239, 68, 68, 0.25);">
-                <div style="margin-bottom: 28px;">
-                    <h2 style="font-size: 18px; font-weight: 700; color: #fca5a5;
-                               margin: 0 0 6px; display: flex; align-items: center; gap: 8px;">
-                        <span style="width: 6px; height: 6px; border-radius: 999px; background: #ef4444;"></span>
-                        Supprimer mon compte
-                    </h2>
-                    <p style="font-size: 13px; color: #9ca3af; margin: 0; line-height: 1.6;">
-                        Cette action est <strong style="color: #fca5a5;">définitive</strong>.
-                        Toutes vos données (pointages, absences, profil) seront effacées et
-                        ne pourront pas être récupérées.
-                    </p>
-                </div>
-                @include('profile.partials.delete-user-form')
-            </div>
-        </div>
+        {{--
+            La zone dangereuse (auto-suppression) a été retirée du profil.
+            En entreprise, seul l'administrateur peut désactiver/supprimer un compte
+            (Sprint 6, US-090). L'utilisateur souhaitant fermer son compte doit
+            contacter l'administrateur.
+        --}}
     </section>
 
     <style>
