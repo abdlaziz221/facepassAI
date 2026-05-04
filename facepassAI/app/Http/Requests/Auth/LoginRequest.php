@@ -46,7 +46,7 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => 'Identifiants incorrects. Veuillez vérifier votre identifiant et votre mot de passe.',
             ]);
         }
 
@@ -54,25 +54,26 @@ class LoginRequest extends FormRequest
     }
 
     /**
-     * Ensure the login request is not rate limited.
+     * Vérifie que la requête n'est pas bloquée par le rate limiter.
+     *
+     * Sprint 1, tâche 6 (US-012) : limite à 3 tentatives échouées,
+     * blocage temporaire avec message clair en français.
      *
      * @throws ValidationException
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 3)) {
             return;
         }
 
         event(new Lockout($this));
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
+        $minutes = (int) ceil($seconds / 60);
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
+            'email' => "Trop de tentatives de connexion. Veuillez réessayer dans {$minutes} minute(s) (compte temporairement bloqué).",
         ]);
     }
 

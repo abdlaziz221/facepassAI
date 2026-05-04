@@ -32,16 +32,22 @@ class AuthenticatedSessionController extends Controller
     }
 
     /**
-     * Destroy an authenticated session.
+     * Détruit la session authentifiée (Sprint 1, US-017).
+     *
+     * - Logout du guard web
+     * - Invalidation de la session (anti session fixation)
+     * - Régénération du token CSRF
+     * - Redirection vers /login avec message flash
      */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()
+            ->route('login')
+            ->with('status', 'Vous avez été déconnecté avec succès.');
     }
 }

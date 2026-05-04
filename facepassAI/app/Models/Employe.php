@@ -2,41 +2,39 @@
 
 namespace App\Models;
 
+use App\Enums\Role;
+use Database\Factories\EmployeFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Hash;
 
-class Employe extends Model
+/**
+ * Sous-type STI : un Employé est un User dont users.role = 'employe'.
+ * - Pointe vers la table 'users' (même table que User)
+ * - Filtre automatiquement les requêtes via un global scope
+ * - Force role = 'employe' à la création
+ */
+class Employe extends User
 {
+    /** @use HasFactory<EmployeFactory> */
     use HasFactory;
 
-    protected $fillable = [
-        'matricule', 'nom', 'prenom', 'email', 'password', 'role',
-        'poste', 'departement', 'salaire_brut', 'photo_faciale', 'est_actif'
-    ];
+    protected $table = 'users';
 
-    protected $hidden = [
-        'password',
-    ];
-
-    protected $casts = [
-        'est_actif' => 'boolean',
-        'salaire_brut' => 'float',
-    ];
-
-    // Mutateur pour hasher automatiquement le mot de passe
-    public function setPasswordAttribute($value)
+    protected static function booted(): void
     {
-        $this->attributes['password'] = Hash::make($value);
+        // Filtre toutes les requêtes : Employe::all() ne renvoie que les employés.
+        static::addGlobalScope('only_employes', function (Builder $query) {
+            $query->where('role', Role::Employe->value);
+        });
+
+        // À la création, on force le rôle.
+        static::creating(function (self $user) {
+            $user->role = Role::Employe;
+        });
     }
 
-    public function pointages()
+    protected static function newFactory(): EmployeFactory
     {
-        return $this->hasMany(Pointage::class);
-    }
-
-    public function demandesAbsence()
-    {
-        return $this->hasMany(DemandeAbsence::class);
+        return EmployeFactory::new();
     }
 }

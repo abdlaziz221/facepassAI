@@ -16,6 +16,12 @@ class User extends Authenticatable
     use HasFactory, Notifiable, HasRoles;
 
     /**
+     * Guard utilisé par spatie/laravel-permission.
+     * Doit matcher le guard des rôles & permissions créés.
+     */
+    protected string $guard_name = 'web';
+
+    /**
      * Mapping role → classe enfant (STI).
      * Utilisé par newFromBuilder() pour retourner le bon sous-type
      * quand on lit depuis la base.
@@ -73,6 +79,10 @@ class User extends Authenticatable
      *
      * Exemple : User::find(3) → renvoie une instance de Gestionnaire
      * si users.role = 'gestionnaire'.
+     *
+     * On délègue à parent::newFromBuilder pour s'assurer que $exists
+     * et tous les flags Eloquent internes sont correctement positionnés
+     * (sinon save() ferait INSERT au lieu d'UPDATE → conflit clé primaire).
      */
     public function newFromBuilder($attributes = [], $connection = null)
     {
@@ -81,17 +91,14 @@ class User extends Authenticatable
 
         $class = static::$childClasses[$role] ?? static::class;
 
-        // Évite la récursion infinie si on est déjà dans la bonne classe.
-        if ($class !== static::class && static::class === self::class) {
-            $model = new $class;
-        } else {
-            $model = $this->newInstance([], true);
+        // Si la classe attendue diffère de la classe actuelle (cas
+        // typique : User::find() qui doit retourner Administrateur),
+        // on délègue à cette sous-classe.
+        if ($class !== static::class) {
+            return (new $class)->newFromBuilder($attributes, $connection);
         }
 
-        $model->setRawAttributes((array) $attributes, true);
-        $model->setConnection($connection ?: $this->getConnectionName());
-        $model->fireModelEvent('retrieved', false);
-
-        return $model;
+        // Sinon, comportement Eloquent standard (set exists = true, etc.)
+        return parent::newFromBuilder($attributes, $connection);
     }
 }

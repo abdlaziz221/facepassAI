@@ -1,98 +1,140 @@
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
-    <!-- Primary Navigation Menu -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-            <div class="flex">
-                <!-- Logo -->
-                <div class="shrink-0 flex items-center">
-                    <a href="{{ route('dashboard') }}">
-                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800" />
-                    </a>
-                </div>
+@php
+    /** @var \App\Models\User $user */
+    $user = Auth::user();
+    $role = $user->role->value ?? 'employe';
+    $roleLabel = $user->role->label() ?? 'Utilisateur';
+@endphp
 
-                <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
-                    </x-nav-link>
-                </div>
-            </div>
+<nav x-data="{ menu: false }" style="border-bottom: 1px solid rgba(255,255,255,0.06);">
+    <div style="max-width: 1280px; margin: 0 auto; padding: 14px 32px;
+                display: flex; align-items: center; justify-content: space-between; gap: 24px;">
 
-            <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
-                <x-dropdown align="right" width="48">
-                    <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
-                            <div>{{ Auth::user()->name }}</div>
+        {{-- LOGO + APP NAME --}}
+        <a href="{{ route('dashboard') }}"
+           style="display: flex; align-items: center; gap: 10px; color: white;
+                  text-decoration: none; flex-shrink: 0;">
+            <x-application-logo class="logo-glow" style="width: 28px; height: 28px;" />
+            <span style="font-size: 17px; font-weight: 700; letter-spacing: -0.02em;">
+                FacePass<span style="color: #818cf8;">.AI</span>
+            </span>
+        </a>
 
-                            <div class="ms-1">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                        </button>
-                    </x-slot>
+        {{-- LIENS DE NAV (selon le rôle) --}}
+        <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+            <a href="{{ route('dashboard') }}"
+               style="padding: 8px 14px; border-radius: 8px;
+                      color: {{ request()->routeIs('dashboard') ? 'white' : '#9ca3af' }};
+                      background: {{ request()->routeIs('dashboard') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
+                      text-decoration: none; font-size: 14px; font-weight: 500;
+                      transition: all .15s;">
+                Tableau de bord
+            </a>
 
-                    <x-slot name="content">
-                        <x-dropdown-link :href="route('profile.edit')">
-                            {{ __('Profile') }}
-                        </x-dropdown-link>
+            @can('employes.view')
+                <a href="#" class="link-muted"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                    Employés
+                </a>
+            @endcan
 
-                        <!-- Authentication -->
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
+            @can('pointages.view-own')
+                <a href="#" class="link-muted"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                    Pointages
+                </a>
+            @endcan
 
-                            <x-dropdown-link :href="route('logout')"
-                                    onclick="event.preventDefault();
-                                                this.closest('form').submit();">
-                                {{ __('Log Out') }}
-                            </x-dropdown-link>
-                        </form>
-                    </x-slot>
-                </x-dropdown>
-            </div>
+            @can('absences.view-own')
+                <a href="#" class="link-muted"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                    Absences
+                </a>
+            @endcan
 
-            <!-- Hamburger -->
-            <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out">
-                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
+            @can('rapports.view')
+                <a href="#" class="link-muted"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                    Rapports
+                </a>
+            @endcan
+
+            @can('horaires.configure')
+                <a href="#" class="link-muted"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                    Horaires
+                </a>
+            @endcan
+
+            @can('gestionnaires.manage')
+                <a href="#" class="link-muted"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                    Gestionnaires
+                </a>
+            @endcan
+
+            @can('logs.view')
+                <a href="#" class="link-muted"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                    Logs
+                </a>
+            @endcan
         </div>
-    </div>
 
-    <!-- Responsive Navigation Menu -->
-    <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
-        <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                {{ __('Dashboard') }}
-            </x-responsive-nav-link>
-        </div>
+        {{-- USER MENU --}}
+        <div x-data="{ open: false }" style="position: relative; flex-shrink: 0;">
+            <button @click="open = !open"
+                    style="display: flex; align-items: center; gap: 10px; padding: 6px 12px 6px 6px;
+                           border-radius: 999px;
+                           background: rgba(255,255,255,0.04);
+                           border: 1px solid rgba(255,255,255,0.06);
+                           color: #e5e7eb; cursor: pointer; transition: all .15s;">
+                <span style="width: 28px; height: 28px; border-radius: 999px;
+                             background: linear-gradient(135deg, #6366f1, #8b5cf6);
+                             display: flex; align-items: center; justify-content: center;
+                             font-size: 12px; font-weight: 700; color: white;">
+                    {{ strtoupper(substr($user->name, 0, 2)) }}
+                </span>
+                <div style="text-align: left;">
+                    <div style="font-size: 13px; font-weight: 600; color: white;">{{ $user->name }}</div>
+                    <div style="font-size: 11px; color: #818cf8;">{{ $roleLabel }}</div>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" style="color: #6b7280;">
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                </svg>
+            </button>
 
-        <!-- Responsive Settings Options -->
-        <div class="pt-4 pb-1 border-t border-gray-200">
-            <div class="px-4">
-                <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
-                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
-            </div>
+            <div x-show="open"
+                 @click.outside="open = false"
+                 x-transition
+                 style="position: absolute; right: 0; top: calc(100% + 8px); min-width: 200px;
+                        background: rgba(15, 17, 26, 0.98);
+                        border: 1px solid rgba(255,255,255,0.08);
+                        border-radius: 12px; padding: 6px;
+                        backdrop-filter: blur(20px); z-index: 50;
+                        box-shadow: 0 12px 40px rgba(0,0,0,0.5);"
+                 style="display: none;">
 
-            <div class="mt-3 space-y-1">
-                <x-responsive-nav-link :href="route('profile.edit')">
-                    {{ __('Profile') }}
-                </x-responsive-nav-link>
+                <a href="{{ route('profile.edit') }}"
+                   style="display: block; padding: 10px 14px; border-radius: 8px;
+                          color: #e5e7eb; text-decoration: none; font-size: 14px;"
+                   onmouseover="this.style.background='rgba(99,102,241,0.1)'"
+                   onmouseout="this.style.background='transparent'">
+                    Mon profil
+                </a>
 
-                <!-- Authentication -->
+                <div style="height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0;"></div>
+
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-
-                    <x-responsive-nav-link :href="route('logout')"
-                            onclick="event.preventDefault();
-                                        this.closest('form').submit();">
-                        {{ __('Log Out') }}
-                    </x-responsive-nav-link>
+                    <button type="submit"
+                            style="display: block; width: 100%; text-align: left;
+                                   padding: 10px 14px; border-radius: 8px;
+                                   background: transparent; border: none; cursor: pointer;
+                                   color: #fca5a5; font-size: 14px;"
+                            onmouseover="this.style.background='rgba(239,68,68,0.1)'"
+                            onmouseout="this.style.background='transparent'">
+                        Se déconnecter
+                    </button>
                 </form>
             </div>
         </div>
