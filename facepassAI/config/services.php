@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'face_recognition' => [
+    'url' => env('FACE_RECOGNITION_URL', 'http://localhost:8001'),
+    'timeout' => env('FACE_RECOGNITION_TIMEOUT', 3),
+    'retries' => env('FACE_RECOGNITION_RETRIES', 2),
+    ],
+
 ];
