@@ -28,7 +28,7 @@ class StoreEmployeRequest extends FormRequest
             'poste'        => ['required', 'string', 'max:100'],
             'departement'  => ['required', 'string', 'max:100'],
             'salaire_brut' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'photo_faciale' => ['nullable', 'string', 'max:255'], // chemin upload (Sprint 3)
+            'photo_faciale' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'], // chemin upload (Sprint 3)
         ];
     }
 

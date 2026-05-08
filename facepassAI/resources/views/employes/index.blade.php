@@ -30,6 +30,14 @@
         </div>
     @endif
 
+    @if (session('error'))
+        <div style="margin-bottom: 16px; padding: 12px 16px; border-radius: 10px;
+                    background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25);
+                    color: #fca5a5; font-size: 14px;">
+            ⚠️ {{ session('error') }}
+        </div>
+    @endif
+
     {{-- Table --}}
     <div class="glass" style="border-radius: 16px; overflow: hidden;">
         <table style="width: 100%; border-collapse: collapse;">
@@ -60,14 +68,12 @@
                                 <a href="{{ route('employes.edit', $profile) }}" class="link-muted" style="margin-right: 12px;">Modifier</a>
                             @endcan
                             @can('delete', $profile)
-                                <form method="POST" action="{{ route('employes.destroy', $profile) }}" style="display: inline;"
-                                      onsubmit="return confirm('Confirmer la suppression de {{ $profile->user->name }} ?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" style="background: none; border: none; color: #fca5a5; cursor: pointer; font-size: 14px;">
-                                        Supprimer
-                                    </button>
-                                </form>
+                                <button 
+                                    type="button"
+                                    onclick="openDeleteModal({{ $profile->id }}, '{{ $profile->user->name }}')"
+                                    style="background: none; border: none; color: #fca5a5; cursor: pointer; font-size: 14px;">
+                                    Supprimer
+                                </button>
                             @endcan
                         </td>
                     </tr>
@@ -86,4 +92,49 @@
     <div style="margin-top: 16px;">
         {{ $employes->links() }}
     </div>
+
+    {{-- Modale de confirmation JavaScript --}}
+    <div id="deleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 9999;">
+        <div style="background: #1e1e2f; border-radius: 16px; padding: 28px; max-width: 400px; width: 90%; text-align: center; border: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+            <h3 style="font-size: 20px; font-weight: bold; margin-bottom: 12px; color: white;">Confirmer la suppression</h3>
+            <p style="color: #9ca3af; margin-bottom: 8px;">
+                Êtes-vous sûr de vouloir supprimer <strong id="deleteEmployeName"></strong> ?
+            </p>
+            <p style="color: #fca5a5; font-size: 12px; margin-bottom: 24px;">
+                Cette action désactivera son compte et supprimera son profil.
+            </p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button 
+                    type="button"
+                    onclick="closeDeleteModal()"
+                    style="padding: 8px 20px; background: #374151; border: none; border-radius: 8px; color: white; cursor: pointer;">
+                    Annuler
+                </button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" style="padding: 8px 20px; background: #dc2626; border: none; border-radius: 8px; color: white; cursor: pointer;">
+                        Oui, supprimer
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
 </x-app-layout>
+
+<script>
+    function openDeleteModal(id, name) {
+        document.getElementById('deleteModal').style.display = 'flex';
+        document.getElementById('deleteEmployeName').innerText = name;
+        document.getElementById('deleteForm').action = '/employes/' + id;
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').style.display = 'none';
+    }
+</script>

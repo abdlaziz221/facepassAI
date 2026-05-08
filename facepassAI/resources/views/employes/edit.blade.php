@@ -10,7 +10,7 @@
     </x-slot>
 
     <div class="glass" style="padding: 32px; border-radius: 16px; max-width: 720px;">
-        <form method="POST" action="{{ route('employes.update', $profile) }}" style="display: flex; flex-direction: column; gap: 16px;">
+        <form method="POST" action="{{ route('employes.update', $profile) }}" style="display: flex; flex-direction: column; gap: 16px;" enctype="multipart/form-data">
             @csrf
             @method('PATCH')
 
@@ -53,6 +53,56 @@
                 </div>
             </div>
 
+            {{-- Photo actuelle --}}
+@if($profile->photo_faciale)
+<div>
+    <label style="display: block; font-size: 13px; font-weight: 500; color: #9ca3af; margin-bottom: 6px;">
+        Photo actuelle
+    </label>
+    <img src="{{ Storage::url($profile->photo_faciale) }}" 
+         style="width: 60px; height: 60px; object-fit: cover; border-radius: 50%; border: 2px solid #3b82f6;">
+</div>
+@endif
+
+            {{-- Nouvelle photo (optionnelle) avec aperçu --}}
+            <div x-data="{ preview: null, fileName: null }">
+                <label style="display: block; font-size: 13px; font-weight: 500; color: #9ca3af; margin-bottom: 6px;">
+                    Nouvelle photo faciale <span style="color: #6b7280;">(optionnelle)</span>
+                </label>
+                
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button type="button"
+                            @click="$refs.photoInput.click()"
+                            class="btn-secondary"
+                            style="padding: 8px 16px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer;">
+                        📁 Choisir une photo
+                    </button>
+                    <span x-text="fileName || 'Aucun fichier choisi'" style="color: #9ca3af; font-size: 13px;"></span>
+                </div>
+                
+                <input type="file" 
+                    name="photo_faciale" 
+                    accept="image/jpeg,image/png,image/jpg"
+                    @change="preview = URL.createObjectURL($event.target.files[0]); fileName = $event.target.files[0]?.name"
+                    x-ref="photoInput"
+                    style="display: none;">
+                
+                <template x-if="preview">
+                    <div style="margin-top: 12px;">
+                        <img :src="preview" style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%; border: 2px solid #3b82f6;">
+                    </div>
+                </template>
+                
+                @error('photo_faciale') 
+                    <p class="error-text">{{ $message }}</p> 
+                @enderror
+                
+                <p style="font-size: 12px; color: #6b7280; margin-top: 6px;">
+                    Laissez vide pour conserver la photo actuelle. Formats JPG, PNG. Max 2 Mo.
+                </p>
+            </div>
+
+            {{-- Boutons --}}
             <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px;">
                 <a href="{{ route('employes.show', $profile) }}" class="btn-secondary">Annuler</a>
                 <button type="submit" class="btn-primary">Enregistrer les modifications</button>
