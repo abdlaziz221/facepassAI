@@ -38,6 +38,46 @@
         </div>
     @endif
 
+    {{-- Filtres --}}
+    <div class="glass" style="margin-bottom: 16px; padding: 16px; border-radius: 12px;">
+        <form action="{{ route('employes.index') }}" method="GET" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;">
+            <div style="flex: 1; min-width: 200px;">
+                <label for="search" style="display: block; font-size: 12px; color: #9ca3af; margin-bottom: 6px;">Recherche (Nom, Email, Matricule)</label>
+                <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Ex: Dupont, EMP-123..." class="form-input" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 12px; border-radius: 6px;">
+            </div>
+            
+            <div style="flex: 1; min-width: 150px;">
+                <label for="departement" style="display: block; font-size: 12px; color: #9ca3af; margin-bottom: 6px;">Département</label>
+                <select name="departement" id="departement" class="form-input" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 12px; border-radius: 6px;">
+                    <option value="">Tous les départements</option>
+                    @if(isset($departements))
+                        @foreach($departements as $dept)
+                            <option value="{{ $dept }}" {{ request('departement') == $dept ? 'selected' : '' }}>{{ $dept }}</option>
+                        @endforeach
+                    @endif
+                </select>
+            </div>
+            
+            <div style="flex: 1; min-width: 150px;">
+                <label for="statut" style="display: block; font-size: 12px; color: #9ca3af; margin-bottom: 6px;">Statut</label>
+                <select name="statut" id="statut" class="form-input" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px 12px; border-radius: 6px;">
+                    <option value="">Tous les statuts</option>
+                    <option value="actif" {{ request('statut') == 'actif' ? 'selected' : '' }}>Actif</option>
+                    <option value="inactif" {{ request('statut') == 'inactif' ? 'selected' : '' }}>Inactif</option>
+                </select>
+            </div>
+
+            <div>
+                <button type="submit" style="padding: 8px 16px; background: #6366f1; border: none; border-radius: 6px; color: white; cursor: pointer;">
+                    Filtrer
+                </button>
+                @if(request()->hasAny(['search', 'departement', 'statut']))
+                    <a href="{{ route('employes.index') }}" style="color: #9ca3af; text-decoration: underline; margin-left: 12px; font-size: 14px;">Réinitialiser</a>
+                @endif
+            </div>
+        </form>
+    </div>
+
     {{-- Table --}}
     <div class="glass" style="border-radius: 16px; overflow: hidden;">
         <table style="width: 100%; border-collapse: collapse;">
