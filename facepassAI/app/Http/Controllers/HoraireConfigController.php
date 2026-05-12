@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UpdateHoraireRequest;
 use App\Models\JoursTravail;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 
 /**
- * Configuration des jours et horaires de travail (Sprint 4 carte 2, US-040).
+ * Configuration des jours et horaires de travail (Sprint 4 carte 2 + 3, US-040/041).
  *
  * Routes (admin uniquement) :
  *   - GET  /admin/horaires → formulaire d'édition
@@ -18,6 +17,8 @@ use Illuminate\Validation\Rule;
  *
  * Le terme UI est "horaires" (URL, view, route name), le terme métier
  * est "jours_travail" (table et modèle).
+ *
+ * La validation est factorisée dans UpdateHoraireRequest (carte 3).
  */
 class HoraireConfigController extends Controller
 {
@@ -28,23 +29,9 @@ class HoraireConfigController extends Controller
         ]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(UpdateHoraireRequest $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'jours_ouvrables'     => ['required', 'array', 'min:1'],
-            'jours_ouvrables.*'   => ['string', Rule::in(JoursTravail::JOURS_VALIDES)],
-            'heure_arrivee'       => ['required', 'date_format:H:i'],
-            'heure_debut_pause'   => ['required', 'date_format:H:i', 'after:heure_arrivee'],
-            'heure_fin_pause'     => ['required', 'date_format:H:i', 'after:heure_debut_pause'],
-            'heure_depart'        => ['required', 'date_format:H:i', 'after:heure_fin_pause'],
-            'jours_feries'        => ['nullable', 'array'],
-            'jours_feries.*'      => ['nullable', 'date_format:Y-m-d'],
-        ], [
-            'jours_ouvrables.min'  => 'Sélectionnez au moins un jour ouvrable.',
-            'heure_debut_pause.after' => "L'heure de début de pause doit être après l'arrivée.",
-            'heure_fin_pause.after'   => "L'heure de fin de pause doit être après le début.",
-            'heure_depart.after'      => "L'heure de départ doit être après la fin de pause.",
-        ]);
+        $validated = $request->validated();
 
         $config = JoursTravail::current();
         $config->update([
