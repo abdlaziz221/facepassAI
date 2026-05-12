@@ -83,3 +83,9 @@ Route::middleware(['auth', 'role:consultant|gestionnaire|administrateur'])
 |--------------------------------------------------------------------------
 */
 require __DIR__.'/auth.php';
+
+
+use App\Http\Controllers\PointageController;
+
+// Sprint 3 — Pointage biométrique public (kiosque)
+Route::post('/pointages', [PointageController::class, 'store'])->name('pointages.store');

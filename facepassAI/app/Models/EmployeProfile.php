@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Profil métier d'un Employé (Sprint 2, US-020).
  *
  * Contient les données spécifiques au poste : matricule, fonction,
- * département, salaire brut, photo faciale. Lié 1-1 à un User
- * (avec role=employe) via la colonne `user_id`.
+ * département, salaire brut, photo faciale, embedding facial.
+ * Lié 1-1 à un User (avec role=employe) via la colonne `user_id`.
  *
  * Pour accéder au profil depuis un Employe :  $employe->profile
  * Pour accéder au User depuis un profil :     $profile->user
@@ -31,12 +31,14 @@ class EmployeProfile extends Model
         'departement',
         'salaire_brut',
         'photo_faciale',
+        'encodage_facial',
     ];
 
     protected function casts(): array
     {
         return [
-            'salaire_brut' => 'decimal:2',
+            'salaire_brut'    => 'decimal:2',
+            'encodage_facial' => 'array',
         ];
     }
 
