@@ -16,11 +16,61 @@
             </div>
         @endif
 
+        @if ($pointagesCount > 0)
+            <div style="margin-bottom: 24px; padding: 16px 20px; background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.4); border-radius: 12px; color: #fcd34d;">
+                <div style="display: flex; align-items: start; gap: 12px;">
+                    <span style="font-size: 24px; line-height: 1;">⚠️</span>
+                    <div>
+                        <p style="margin: 0 0 4px 0; font-weight: 600; color: #fde68a;">
+                            Attention — {{ $pointagesCount }} pointage(s) existent déjà
+                        </p>
+                        <p style="margin: 0; font-size: 13px;">
+                            Ces pointages ont été enregistrés avec la configuration actuelle.
+                            Toute modification s'appliquera uniquement aux pointages futurs ;
+                            les pointages existants ne seront pas modifiés rétroactivement.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('admin.horaires.update') }}"
-              x-data="horairesForm(@js($config->jours_ouvrables ?? []), @js($config->jours_feries ?? []))"
+              x-data="horairesForm(@js($config->jours_ouvrables ?? []), @js($config->jours_feries ?? []), {{ $pointagesCount }})"
+              @submit.prevent="onSubmit($event)"
               style="display: flex; flex-direction: column; gap: 24px;">
             @csrf
             @method('PUT')
+
+            {{-- Champ caché pour la confirmation (rempli par la modale) --}}
+            <input type="hidden" name="confirm" x-bind:value="confirmed ? '1' : ''">
+
+            {{-- Modale de confirmation (visible seulement si pointages existent et user clique Enregistrer) --}}
+            <div x-show="showModal" x-cloak
+                 style="position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px;"
+                 @click.self="showModal = false">
+                <div style="background: #0f172a; border: 1px solid rgba(245,158,11,0.4); border-radius: 16px; padding: 28px; max-width: 480px; width: 100%; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+                    <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #fde68a;">
+                        ⚠️ Confirmation requise
+                    </h3>
+                    <p style="margin: 0 0 16px 0; color: #cbd5e1; font-size: 14px; line-height: 1.5;">
+                        <strong x-text="pointagesCount"></strong> pointage(s) existent déjà avec la configuration actuelle.
+                        Êtes-vous sûr(e) de vouloir modifier les horaires de référence ?
+                    </p>
+                    <p style="margin: 0 0 20px 0; color: #94a3b8; font-size: 12px;">
+                        Les pointages existants ne seront pas modifiés rétroactivement.
+                    </p>
+                    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                        <button type="button" @click="showModal = false"
+                                style="padding: 10px 18px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 8px; cursor: pointer;">
+                            Annuler
+                        </button>
+                        <button type="button" @click="confirmed = true; showModal = false; $el.closest('form').submit()"
+                                style="padding: 10px 18px; background: rgba(245,158,11,0.2); border: 1px solid rgba(245,158,11,0.5); color: #fde68a; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                            Oui, je confirme
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             {{-- ============================================================ --}}
             {{-- Jours ouvrables --}}
@@ -130,10 +180,24 @@
     </div>
 
     <script>
-        function horairesForm(joursInit, feriesInit) {
+        function horairesForm(joursInit, feriesInit, pointagesCount) {
             return {
                 jours: joursInit,
                 feries: feriesInit.length ? feriesInit : [],
+                pointagesCount: pointagesCount,
+                showModal: false,
+                confirmed: false,
+
+                // Soumission du formulaire :
+                // - Si pointages existent ET pas encore confirmé → ouvrir modale
+                // - Sinon → submit direct
+                onSubmit(event) {
+                    if (this.pointagesCount > 0 && !this.confirmed) {
+                        this.showModal = true;
+                        return;
+                    }
+                    event.target.submit();
+                },
             };
         }
     </script>
