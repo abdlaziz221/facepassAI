@@ -2,24 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Demande d'absence d'un employé (Sprint 4 Horaires carte 6, US-050).
- *
- * Workflow :
- *   1. L'employé crée une demande → statut = en_attente
- *   2. Un gestionnaire la valide → statut = validee + gestionnaire_id + commentaire
- *   3. Ou la refuse → statut = refusee + gestionnaire_id + commentaire
- *
- * Le gestionnaire est nullable car une demande peut rester en attente.
- * Le motif est obligatoire à la création.
- *
- * Relations :
- *   - employe()      : belongsTo EmployeProfile (FK employe_id → employes.id)
- *   - gestionnaire() : belongsTo User (FK gestionnaire_id → users.id, nullable)
+ * Demande d'absence d'un employé (Sprint 4 Horaires cartes 6 + 8, US-050/051).
  */
 class DemandeAbsence extends Model
 {
@@ -27,7 +16,6 @@ class DemandeAbsence extends Model
 
     protected $table = 'demandes_absence';
 
-    /** Statuts possibles d'une demande. */
     public const STATUT_EN_ATTENTE = 'en_attente';
     public const STATUT_VALIDEE    = 'validee';
     public const STATUT_REFUSEE    = 'refusee';
@@ -36,6 +24,12 @@ class DemandeAbsence extends Model
         self::STATUT_EN_ATTENTE,
         self::STATUT_VALIDEE,
         self::STATUT_REFUSEE,
+    ];
+
+    /** Statuts qui "bloquent" pour la détection de chevauchement. */
+    public const STATUTS_BLOQUANTS = [
+        self::STATUT_EN_ATTENTE,
+        self::STATUT_VALIDEE,
     ];
 
     protected $fillable = [
@@ -57,38 +51,62 @@ class DemandeAbsence extends Model
         'statut' => self::STATUT_EN_ATTENTE,
     ];
 
-    /**
-     * L'employé (profil métier) qui a fait la demande.
-     */
     public function employe(): BelongsTo
     {
         return $this->belongsTo(EmployeProfile::class, 'employe_id');
     }
 
-    /**
-     * Le gestionnaire qui a validé ou refusé la demande.
-     * Null tant que la demande est en attente.
-     */
     public function gestionnaire(): BelongsTo
     {
         return $this->belongsTo(User::class, 'gestionnaire_id');
     }
 
+    public function estEnAttente(): bool { return $this->statut === self::STATUT_EN_ATTENTE; }
+    public function estValidee(): bool   { return $this->statut === self::STATUT_VALIDEE; }
+    public function estRefusee(): bool   { return $this->statut === self::STATUT_REFUSEE; }
+
+    // ============================================================
+    // Sprint 4 carte 8 — Détection de chevauchement (US-051)
+    // ============================================================
+
     /**
-     * Indique si la demande est encore en attente de décision.
+     * Indique si l'employé a déjà une demande qui chevauche la période.
+     *
+     * Deux périodes se chevauchent si :
+     *   A.date_debut <= B.date_fin ET A.date_fin >= B.date_debut
+     *
+     * Seules les demandes en_attente ou validee sont prises en compte
+     * (les refusées n'empêchent pas une nouvelle demande).
+     *
+     * @param int      $employeId  ID de l'EmployeProfile concerné
+     * @param string   $debut      Date de début (format Y-m-d)
+     * @param string   $fin        Date de fin (format Y-m-d)
+     * @param int|null $excludeId  ID de la demande courante (pour update, exclure soi-même)
      */
-    public function estEnAttente(): bool
+    public static function hasOverlap(int $employeId, string $debut, string $fin, ?int $excludeId = null): bool
     {
-        return $this->statut === self::STATUT_EN_ATTENTE;
+        return static::query()
+            ->where('employe_id', $employeId)
+            ->whereIn('statut', self::STATUTS_BLOQUANTS)
+            ->where('date_debut', '<=', $fin)
+            ->where('date_fin', '>=', $debut)
+            ->when($excludeId, fn (Builder $q) => $q->where('id', '!=', $excludeId))
+            ->exists();
     }
 
-    public function estValidee(): bool
+    /**
+     * Retourne les demandes qui chevauchent une période donnée pour un employé.
+     * Utile pour l'UI quand on veut montrer LESQUELLES chevauchent.
+     */
+    public static function findOverlaps(int $employeId, string $debut, string $fin, ?int $excludeId = null)
     {
-        return $this->statut === self::STATUT_VALIDEE;
-    }
-
-    public function estRefusee(): bool
-    {
-        return $this->statut === self::STATUT_REFUSEE;
+        return static::query()
+            ->where('employe_id', $employeId)
+            ->whereIn('statut', self::STATUTS_BLOQUANTS)
+            ->where('date_debut', '<=', $fin)
+            ->where('date_fin', '>=', $debut)
+            ->when($excludeId, fn (Builder $q) => $q->where('id', '!=', $excludeId))
+            ->orderBy('date_debut')
+            ->get();
     }
 }

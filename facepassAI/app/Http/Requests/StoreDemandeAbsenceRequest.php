@@ -2,22 +2,23 @@
 
 namespace App\Http\Requests;
 
+use App\Models\DemandeAbsence;
+use App\Models\EmployeProfile;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * Form Request pour la création d'une demande d'absence par un employé
- * (Sprint 4 Horaires carte 7, US-050).
+ * (Sprint 4 Horaires cartes 7 + 8, US-050/051).
  *
- * Cohérence garantie :
+ * Validation :
  *   - date_debut >= aujourd'hui
  *   - date_fin   >= date_debut
  *   - motif obligatoire, entre 5 et 500 caractères
+ *   - Aucune demande en_attente ou validee ne chevauche la période (US-051)
  */
 class StoreDemandeAbsenceRequest extends FormRequest
 {
-    /**
-     * L'autorisation est gérée par le middleware de route (role:employe).
-     */
     public function authorize(): bool
     {
         return true;
@@ -30,6 +31,46 @@ class StoreDemandeAbsenceRequest extends FormRequest
             'date_fin'   => ['required', 'date', 'after_or_equal:date_debut'],
             'motif'      => ['required', 'string', 'min:5', 'max:500'],
         ];
+    }
+
+    /**
+     * Validation supplémentaire après les règles standard :
+     * détection de chevauchement avec une autre demande de l'employé.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator) {
+            // Si déjà des erreurs sur les dates, inutile de vérifier le chevauchement
+            if ($validator->errors()->has('date_debut')
+                || $validator->errors()->has('date_fin')) {
+                return;
+            }
+
+            $user = $this->user();
+            if (!$user) {
+                return;
+            }
+
+            $profile = EmployeProfile::where('user_id', $user->id)->first();
+            if (!$profile) {
+                return; // pas de profil → l'erreur sera levée par le controller
+            }
+
+            $debut = $this->input('date_debut');
+            $fin   = $this->input('date_fin');
+
+            if (DemandeAbsence::hasOverlap($profile->id, $debut, $fin)) {
+                $overlaps = DemandeAbsence::findOverlaps($profile->id, $debut, $fin);
+                $first    = $overlaps->first();
+                $message  = sprintf(
+                    "Vous avez déjà une demande %s pour la période du %s au %s qui chevauche celle-ci. Veuillez choisir d'autres dates.",
+                    $first->statut === DemandeAbsence::STATUT_VALIDEE ? 'validée' : 'en attente',
+                    $first->date_debut->format('d/m/Y'),
+                    $first->date_fin->format('d/m/Y')
+                );
+                $validator->errors()->add('date_debut', $message);
+            }
+        });
     }
 
     public function messages(): array
