@@ -6,9 +6,6 @@ use Database\Factories\EmployeProfileFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Profil métier d'un Employé (Sprint 2, US-020).
@@ -24,8 +21,6 @@ class EmployeProfile extends Model
 {
     /** @use HasFactory<EmployeProfileFactory> */
     use HasFactory;
-    use LogsActivity;
-     use SoftDeletes;
 
     protected $table = 'employes';
 
@@ -36,7 +31,6 @@ class EmployeProfile extends Model
         'departement',
         'salaire_brut',
         'photo_faciale',
-        'encodage_facial',
     ];
 
     protected function casts(): array
@@ -69,13 +63,5 @@ class EmployeProfile extends Model
     public function setMatriculeAttribute(string $value): void
     {
         $this->attributes['matricule'] = strtoupper(trim($value));
-    }
-
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logOnly(['matricule', 'poste', 'departement', 'salaire_brut', 'photo_faciale'])
-            ->logOnlyDirty()  // Log seulement ce qui a changé
-            ->dontSubmitEmptyLogs();
     }
 }
