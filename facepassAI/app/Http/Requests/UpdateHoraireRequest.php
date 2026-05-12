@@ -8,15 +8,12 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Form Request pour la mise à jour de la configuration des horaires
- * (Sprint 4 Horaires carte 3 + 4, US-041/043).
+ * Form Request pour la mise à jour de la configuration des horaires.
  *
- * Cohérence garantie :
- *   arrivée < début pause < fin pause < départ
- *
- * Avertissement avant modification (carte 4 US-043) :
- *   Si des pointages existent déjà, l'admin doit confirmer explicitement
- *   via le flag `confirm=1` (case à cocher dans la modale du formulaire).
+ * Notes :
+ *   - Les jours fériés sont gérés séparément via JourFerieController (carte 5)
+ *   - L'admin doit confirmer si des pointages existent déjà (carte 4)
+ *   - Cohérence chronologique des heures (carte 3)
  */
 class UpdateHoraireRequest extends FormRequest
 {
@@ -27,7 +24,6 @@ class UpdateHoraireRequest extends FormRequest
 
     public function rules(): array
     {
-        // L'admin doit confirmer si des pointages existent déjà
         $pointagesCount  = Pointage::count();
         $confirmRequired = $pointagesCount > 0;
 
@@ -40,11 +36,6 @@ class UpdateHoraireRequest extends FormRequest
             'heure_fin_pause'     => ['required', 'date_format:H:i', 'after:heure_debut_pause'],
             'heure_depart'        => ['required', 'date_format:H:i', 'after:heure_fin_pause'],
 
-            'jours_feries'        => ['nullable', 'array'],
-            'jours_feries.*'      => ['nullable', 'date_format:Y-m-d'],
-
-            // US-043 : confirmation obligatoire si pointages existent.
-            // Si aucun pointage, le champ est totalement optionnel.
             'confirm' => $confirmRequired
                 ? ['required', 'accepted']
                 : ['nullable'],
@@ -76,10 +67,6 @@ class UpdateHoraireRequest extends FormRequest
             'heure_depart.date_format' => "L'heure de départ doit être au format HH:MM (exemple : 17:00).",
             'heure_depart.after'       => "L'heure de départ doit être strictement après l'heure de fin de pause.",
 
-            'jours_feries.array'          => 'Le format des jours fériés est invalide.',
-            'jours_feries.*.date_format'  => "Un jour férié n'est pas au format YYYY-MM-DD.",
-
-            // US-043
             'confirm.required' => "Attention : {$count} pointage(s) existent déjà avec les anciens horaires. Cochez « Je confirme » pour continuer.",
             'confirm.accepted' => "Vous devez cocher la confirmation pour appliquer cette modification.",
         ];
@@ -93,7 +80,6 @@ class UpdateHoraireRequest extends FormRequest
             'heure_debut_pause' => 'heure de début de pause',
             'heure_fin_pause'   => 'heure de fin de pause',
             'heure_depart'      => 'heure de départ',
-            'jours_feries'      => 'jours fériés',
             'confirm'           => 'confirmation',
         ];
     }

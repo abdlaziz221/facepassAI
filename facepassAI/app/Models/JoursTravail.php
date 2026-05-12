@@ -10,16 +10,12 @@ use Illuminate\Database\Eloquent\Model;
  * Table singleton : une seule ligne dans la base, accessible via
  * JoursTravail::current() qui retourne (et crée si besoin) l'instance.
  *
- * Utilisée par :
- *   - Le contrôleur d'administration pour configurer les horaires
- *   - Le PointageTypeResolver pour valider les plages horaires (Sprint 5)
- *   - Le calcul des retards et départs anticipés (Sprint 5)
+ * Note : les jours fériés sont dans une table séparée (JourFerie, US-042).
  */
 class JoursTravail extends Model
 {
     protected $table = 'jours_travail';
 
-    /** Jours de la semaine valides (snake_case, FR). */
     public const JOURS_VALIDES = [
         'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche',
     ];
@@ -30,12 +26,10 @@ class JoursTravail extends Model
         'heure_debut_pause',
         'heure_fin_pause',
         'heure_depart',
-        'jours_feries',
     ];
 
     protected $casts = [
         'jours_ouvrables' => 'array',
-        'jours_feries'    => 'array',
     ];
 
     /**
@@ -53,7 +47,6 @@ class JoursTravail extends Model
                 'heure_debut_pause' => '12:00',
                 'heure_fin_pause'   => '13:00',
                 'heure_depart'      => '17:00',
-                'jours_feries'      => [],
             ]
         );
     }

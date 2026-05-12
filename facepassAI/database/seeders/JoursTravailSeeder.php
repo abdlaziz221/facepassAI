@@ -7,7 +7,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * Seeder de la configuration par défaut des horaires :
- * Lundi à vendredi, 8h-17h, pas de jours fériés (à ajouter via l'admin).
+ * Lundi à vendredi, 8h-17h.
  *
  * Idempotent : appelable plusieurs fois sans dupliquer.
  *
@@ -25,7 +25,6 @@ class JoursTravailSeeder extends Seeder
                 'heure_debut_pause' => '12:00',
                 'heure_fin_pause'   => '13:00',
                 'heure_depart'      => '17:00',
-                'jours_feries'      => [],
             ]
         );
     }

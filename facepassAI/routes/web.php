@@ -55,14 +55,18 @@ Route::middleware('auth')
 */
 
 
-    Route::middleware(['auth', 'role:administrateur'])
+   Route::middleware(['auth', 'role:administrateur'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        Route::get('/test', fn () => '...')->name('test');
-        // 👇 AJOUTE CES 2 LIGNES
+        // ... routes existantes ...
         Route::get('/horaires',  [\App\Http\Controllers\HoraireConfigController::class, 'edit'])->name('horaires.edit');
         Route::put('/horaires',  [\App\Http\Controllers\HoraireConfigController::class, 'update'])->name('horaires.update');
+
+        // 👇 AJOUTE CES 3 LIGNES POUR LES JOURS FÉRIÉS
+        Route::get('/jours-feries',                    [\App\Http\Controllers\JourFerieController::class, 'index'])->name('jours-feries.index');
+        Route::post('/jours-feries',                   [\App\Http\Controllers\JourFerieController::class, 'store'])->name('jours-feries.store');
+        Route::delete('/jours-feries/{jour}',          [\App\Http\Controllers\JourFerieController::class, 'destroy'])->name('jours-feries.destroy');
     });
 
 Route::middleware(['auth', 'role:gestionnaire|administrateur'])

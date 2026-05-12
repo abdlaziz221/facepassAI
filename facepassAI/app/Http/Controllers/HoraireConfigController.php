@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Configuration des jours et horaires de travail
- * (Sprint 4 cartes 2 + 3 + 4, US-040/041/043).
+ * (Sprint 4 cartes 2 + 3 + 4 + 5, US-040/041/043).
+ *
+ * Les jours fériés sont gérés séparément par JourFerieController (US-042).
  */
 class HoraireConfigController extends Controller
 {
@@ -31,7 +33,7 @@ class HoraireConfigController extends Controller
         $config = JoursTravail::current();
         $oldValues = $config->only([
             'jours_ouvrables', 'heure_arrivee', 'heure_debut_pause',
-            'heure_fin_pause', 'heure_depart', 'jours_feries',
+            'heure_fin_pause', 'heure_depart',
         ]);
 
         $config->update([
@@ -40,7 +42,6 @@ class HoraireConfigController extends Controller
             'heure_debut_pause' => $validated['heure_debut_pause'],
             'heure_fin_pause'   => $validated['heure_fin_pause'],
             'heure_depart'      => $validated['heure_depart'],
-            'jours_feries'      => array_values(array_filter($validated['jours_feries'] ?? [])),
         ]);
 
         Log::info('Configuration des horaires mise à jour', [
