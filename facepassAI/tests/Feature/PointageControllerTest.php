@@ -2,20 +2,24 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\PointageController;
 use App\Models\EmployeProfile;
 use App\Models\Pointage;
 use App\Services\FaceRecognitionService;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
- * Tests du PointageController (US-032 Sprint 3 + US-034 Sprint 4).
+ * Tests du PointageController.
  *
- * On mocke FaceRecognitionService pour ne pas dépendre du microservice
- * Python en train de tourner.
+ * Couvre :
+ *  - Sprint 3 US-032 : reconnaissance + création
+ *  - Sprint 4 US-034 : limite 4 pointages/jour
+ *  - Sprint 4 US-035 : gestion d'échecs (max 3 tentatives en session)
  */
 class PointageControllerTest extends TestCase
 {
@@ -49,17 +53,15 @@ class PointageControllerTest extends TestCase
 
     public function test_la_page_kiosque_est_accessible_publiquement(): void
     {
-        $response = $this->get('/pointer');
-
-        $response->assertStatus(200);
-        $response->assertSee('FacePass');
-        $response->assertSee('Pointage biométrique');
+        $this->get('/pointer')
+            ->assertStatus(200)
+            ->assertSee('FacePass')
+            ->assertSee('Pointage biométrique');
     }
 
     public function test_la_page_kiosque_contient_les_4_boutons_de_type(): void
     {
         $response = $this->get('/pointer');
-
         $response->assertSee('Arrivée');
         $response->assertSee('Début pause');
         $response->assertSee('Fin pause');
@@ -72,40 +74,31 @@ class PointageControllerTest extends TestCase
 
     public function test_photo_obligatoire(): void
     {
-        $response = $this->postJson('/pointages', [
-            'type' => 'arrivee',
-        ]);
-
-        $response->assertStatus(422)->assertJsonValidationErrors('photo');
+        $this->postJson('/pointages', ['type' => 'arrivee'])
+            ->assertStatus(422)->assertJsonValidationErrors('photo');
     }
 
     public function test_photo_doit_etre_une_image(): void
     {
-        $response = $this->postJson('/pointages', [
+        $this->postJson('/pointages', [
             'photo' => UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'),
             'type'  => 'arrivee',
-        ]);
-
-        $response->assertStatus(422)->assertJsonValidationErrors('photo');
+        ])->assertStatus(422)->assertJsonValidationErrors('photo');
     }
 
     public function test_type_obligatoire(): void
     {
-        $response = $this->postJson('/pointages', [
+        $this->postJson('/pointages', [
             'photo' => UploadedFile::fake()->image('selfie.jpg'),
-        ]);
-
-        $response->assertStatus(422)->assertJsonValidationErrors('type');
+        ])->assertStatus(422)->assertJsonValidationErrors('type');
     }
 
     public function test_type_invalide_rejete(): void
     {
-        $response = $this->postJson('/pointages', [
+        $this->postJson('/pointages', [
             'photo' => UploadedFile::fake()->image('selfie.jpg'),
             'type'  => 'absurde',
-        ]);
-
-        $response->assertStatus(422)->assertJsonValidationErrors('type');
+        ])->assertStatus(422)->assertJsonValidationErrors('type');
     }
 
     // ============================================================
@@ -118,52 +111,40 @@ class PointageControllerTest extends TestCase
             $mock->shouldReceive('encode')->once()->andReturn(null);
         });
 
-        $response = $this->postJson('/pointages', [
+        $this->postJson('/pointages', [
             'photo' => UploadedFile::fake()->image('vide.jpg'),
             'type'  => 'arrivee',
-        ]);
-
-        $response->assertStatus(422)
-            ->assertJsonPath('success', false);
+        ])->assertStatus(422)->assertJsonPath('success', false);
     }
 
     public function test_retourne_404_si_aucun_employe_reconnu(): void
     {
-        EmployeProfile::factory()->create([
-            'encodage_facial' => array_fill(0, 128, 0.5),
-        ]);
+        EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.5)]);
 
         $this->mock(FaceRecognitionService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('encode')->once()
-                ->andReturn(array_fill(0, 128, 0.1));
-            $mock->shouldReceive('match')
-                ->andReturn(['match' => false, 'distance' => 1.0, 'threshold' => 0.6, 'confidence' => 0.0]);
+            $mock->shouldReceive('encode')->once()->andReturn(array_fill(0, 128, 0.1));
+            $mock->shouldReceive('match')->andReturn([
+                'match' => false, 'distance' => 1.0, 'threshold' => 0.6, 'confidence' => 0.0,
+            ]);
         });
 
-        $response = $this->postJson('/pointages', [
+        $this->postJson('/pointages', [
             'photo' => UploadedFile::fake()->image('inconnu.jpg'),
             'type'  => 'arrivee',
-        ]);
+        ])->assertStatus(404)->assertJsonPath('success', false);
 
-        $response->assertStatus(404)
-            ->assertJsonPath('success', false);
         $this->assertEquals(0, Pointage::count());
     }
 
     public function test_cree_un_pointage_quand_match_trouve(): void
     {
-        $profile = EmployeProfile::factory()->create([
-            'encodage_facial' => array_fill(0, 128, 0.1),
-        ]);
-
+        $profile = EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.1)]);
         $this->mockFaceServiceWithMatch(array_fill(0, 128, 0.1));
 
-        $response = $this->postJson('/pointages', [
+        $this->postJson('/pointages', [
             'photo' => UploadedFile::fake()->image('selfie.jpg'),
             'type'  => 'arrivee',
-        ]);
-
-        $response->assertStatus(201)
+        ])->assertStatus(201)
             ->assertJsonPath('success', true)
             ->assertJsonPath('employe.id', $profile->id)
             ->assertJsonPath('pointage.type', 'arrivee');
@@ -182,28 +163,22 @@ class PointageControllerTest extends TestCase
         EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.5)]);
 
         $this->mock(FaceRecognitionService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('encode')->once()
-                ->andReturn(array_fill(0, 128, 0.1));
-
-            $mock->shouldReceive('match')
-                ->andReturnUsing(function ($e1, $e2) {
-                    $first = $e2[0];
-                    return [
-                        'match'      => true,
-                        'distance'   => abs($first - 0.1),
-                        'threshold'  => 0.6,
-                        'confidence' => 1.0 - abs($first - 0.1),
-                    ];
-                });
+            $mock->shouldReceive('encode')->once()->andReturn(array_fill(0, 128, 0.1));
+            $mock->shouldReceive('match')->andReturnUsing(function ($e1, $e2) {
+                $first = $e2[0];
+                return [
+                    'match' => true,
+                    'distance' => abs($first - 0.1),
+                    'threshold' => 0.6,
+                    'confidence' => 1.0 - abs($first - 0.1),
+                ];
+            });
         });
 
-        $response = $this->postJson('/pointages', [
+        $this->postJson('/pointages', [
             'photo' => UploadedFile::fake()->image('selfie.jpg'),
             'type'  => 'depart',
-        ]);
-
-        $response->assertStatus(201)
-            ->assertJsonPath('employe.id', $proche->id);
+        ])->assertStatus(201)->assertJsonPath('employe.id', $proche->id);
     }
 
     public function test_ignore_employes_sans_encodage_facial(): void
@@ -211,25 +186,19 @@ class PointageControllerTest extends TestCase
         EmployeProfile::factory()->create(['encodage_facial' => null]);
 
         $this->mock(FaceRecognitionService::class, function (MockInterface $mock) {
-            $mock->shouldReceive('encode')->once()
-                ->andReturn(array_fill(0, 128, 0.1));
+            $mock->shouldReceive('encode')->once()->andReturn(array_fill(0, 128, 0.1));
             $mock->shouldNotReceive('match');
         });
 
-        $response = $this->postJson('/pointages', [
+        $this->postJson('/pointages', [
             'photo' => UploadedFile::fake()->image('selfie.jpg'),
             'type'  => 'arrivee',
-        ]);
-
-        $response->assertStatus(404);
+        ])->assertStatus(404);
     }
 
     public function test_le_pointage_est_marque_non_manuel(): void
     {
-        $profile = EmployeProfile::factory()->create([
-            'encodage_facial' => array_fill(0, 128, 0.1),
-        ]);
-
+        EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.1)]);
         $this->mockFaceServiceWithMatch(array_fill(0, 128, 0.1));
 
         $this->postJson('/pointages', [
@@ -248,11 +217,8 @@ class PointageControllerTest extends TestCase
 
     public function test_refuse_si_4_pointages_deja_faits_aujourd_hui(): void
     {
-        $profile = EmployeProfile::factory()->create([
-            'encodage_facial' => array_fill(0, 128, 0.1),
-        ]);
+        $profile = EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.1)]);
 
-        // L'employé a déjà fait ses 4 pointages aujourd'hui
         Pointage::factory()->for($profile, 'employe')->arrivee()->create();
         Pointage::factory()->for($profile, 'employe')->debutPause()->create();
         Pointage::factory()->for($profile, 'employe')->finPause()->create();
@@ -262,50 +228,35 @@ class PointageControllerTest extends TestCase
 
         $response = $this->postJson('/pointages', [
             'photo' => UploadedFile::fake()->image('selfie.jpg'),
-            'type'  => 'arrivee', // tentative d'un 5ème pointage
+            'type'  => 'arrivee',
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonPath('success', false);
-
-        // Message explicite contient "Limite" ou "4 pointages"
-        $message = $response->json('message');
-        $this->assertStringContainsString('4 pointages', $message);
-
-        // Aucun pointage ajouté
+        $response->assertStatus(422)->assertJsonPath('success', false);
+        $this->assertStringContainsString('4 pointages', $response->json('message'));
         $this->assertEquals(4, Pointage::count());
     }
 
     public function test_4eme_pointage_de_la_journee_accepte(): void
     {
-        $profile = EmployeProfile::factory()->create([
-            'encodage_facial' => array_fill(0, 128, 0.1),
-        ]);
-
-        // 3 pointages déjà faits, le 4ème (départ) doit passer
+        $profile = EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.1)]);
         Pointage::factory()->for($profile, 'employe')->arrivee()->create();
         Pointage::factory()->for($profile, 'employe')->debutPause()->create();
         Pointage::factory()->for($profile, 'employe')->finPause()->create();
 
         $this->mockFaceServiceWithMatch(array_fill(0, 128, 0.1));
 
-        $response = $this->postJson('/pointages', [
+        $this->postJson('/pointages', [
             'photo' => UploadedFile::fake()->image('selfie.jpg'),
             'type'  => 'depart',
-        ]);
+        ])->assertStatus(201);
 
-        $response->assertStatus(201);
         $this->assertEquals(4, Pointage::count());
     }
 
     public function test_la_limite_ne_concerne_que_le_jour_courant(): void
     {
-        $profile = EmployeProfile::factory()->create([
-            'encodage_facial' => array_fill(0, 128, 0.1),
-        ]);
-
-        // 4 pointages d'HIER (journée terminée hier, pas aujourd'hui)
-        foreach ([Pointage::TYPE_ARRIVEE, Pointage::TYPE_DEBUT_PAUSE, Pointage::TYPE_FIN_PAUSE, Pointage::TYPE_DEPART] as $type) {
+        $profile = EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.1)]);
+        foreach (['arrivee', 'debut_pause', 'fin_pause', 'depart'] as $type) {
             Pointage::factory()->for($profile, 'employe')->create([
                 'type'       => $type,
                 'created_at' => now()->subDay(),
@@ -314,13 +265,170 @@ class PointageControllerTest extends TestCase
 
         $this->mockFaceServiceWithMatch(array_fill(0, 128, 0.1));
 
-        $response = $this->postJson('/pointages', [
+        $this->postJson('/pointages', [
             'photo' => UploadedFile::fake()->image('selfie.jpg'),
+            'type'  => 'arrivee',
+        ])->assertStatus(201);
+
+        $this->assertEquals(5, Pointage::count());
+    }
+
+    // ============================================================
+    // Sprint 4 US-035 — Gestion des échecs (max 3 tentatives)
+    // ============================================================
+
+    public function test_echec_incremente_le_compteur_de_session(): void
+    {
+        $this->mock(FaceRecognitionService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('encode')->andReturn(null); // échec
+        });
+
+        $response = $this->postJson('/pointages', [
+            'photo' => UploadedFile::fake()->image('floue.jpg'),
             'type'  => 'arrivee',
         ]);
 
-        // Aujourd'hui = nouvelle journée → arrivée OK
-        $response->assertStatus(201);
-        $this->assertEquals(5, Pointage::count());
+        $response->assertStatus(422)
+            ->assertJsonPath('attempts', 1)
+            ->assertJsonPath('max_attempts', PointageController::MAX_FAILED_ATTEMPTS)
+            ->assertJsonPath('remaining', 2);
+    }
+
+    public function test_message_progresse_a_chaque_echec(): void
+    {
+        $this->mock(FaceRecognitionService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('encode')->andReturn(null);
+        });
+
+        // 1ère tentative
+        $r1 = $this->postJson('/pointages', [
+            'photo' => UploadedFile::fake()->image('a.jpg'),
+            'type'  => 'arrivee',
+        ]);
+        $this->assertEquals(1, $r1->json('attempts'));
+        $this->assertEquals(2, $r1->json('remaining'));
+
+        // 2ème tentative
+        $r2 = $this->postJson('/pointages', [
+            'photo' => UploadedFile::fake()->image('b.jpg'),
+            'type'  => 'arrivee',
+        ]);
+        $this->assertEquals(2, $r2->json('attempts'));
+        $this->assertEquals(1, $r2->json('remaining'));
+    }
+
+    public function test_apres_3_echecs_retourne_429(): void
+    {
+        $this->mock(FaceRecognitionService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('encode')->andReturn(null);
+        });
+
+        // 3 échecs
+        for ($i = 0; $i < 3; $i++) {
+            $this->postJson('/pointages', [
+                'photo' => UploadedFile::fake()->image("echec{$i}.jpg"),
+                'type'  => 'arrivee',
+            ])->assertStatus(422);
+        }
+
+        // 4ème tentative bloquée
+        $response = $this->postJson('/pointages', [
+            'photo' => UploadedFile::fake()->image('apres-blocage.jpg'),
+            'type'  => 'arrivee',
+        ]);
+
+        $response->assertStatus(429)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('remaining', 0);
+        $this->assertStringContainsString('gestionnaire', $response->json('message'));
+    }
+
+    public function test_pointage_reussi_reset_le_compteur(): void
+    {
+        $profile = EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.1)]);
+
+        // 2 échecs d'abord
+        $this->mock(FaceRecognitionService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('encode')->andReturn(null);
+        });
+        $this->postJson('/pointages', [
+            'photo' => UploadedFile::fake()->image('a.jpg'), 'type' => 'arrivee',
+        ]);
+        $this->postJson('/pointages', [
+            'photo' => UploadedFile::fake()->image('b.jpg'), 'type' => 'arrivee',
+        ]);
+
+        // Maintenant le mock retourne un succès
+        app()->forgetInstance(FaceRecognitionService::class);
+        $this->mockFaceServiceWithMatch(array_fill(0, 128, 0.1));
+
+        $this->postJson('/pointages', [
+            'photo' => UploadedFile::fake()->image('reussi.jpg'),
+            'type'  => 'arrivee',
+        ])->assertStatus(201);
+
+        // Maintenant si on re-échoue, le compteur repart à 1 (pas 3)
+        app()->forgetInstance(FaceRecognitionService::class);
+        $this->mock(FaceRecognitionService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('encode')->andReturn(null);
+        });
+
+        $r = $this->postJson('/pointages', [
+            'photo' => UploadedFile::fake()->image('apres.jpg'),
+            'type'  => 'arrivee',
+        ]);
+        $this->assertEquals(1, $r->json('attempts'));
+    }
+
+    public function test_limite_pointages_jour_ne_compte_pas_comme_echec(): void
+    {
+        $profile = EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.1)]);
+
+        // 4 pointages aujourd'hui (journée terminée)
+        Pointage::factory()->for($profile, 'employe')->arrivee()->create();
+        Pointage::factory()->for($profile, 'employe')->debutPause()->create();
+        Pointage::factory()->for($profile, 'employe')->finPause()->create();
+        Pointage::factory()->for($profile, 'employe')->depart()->create();
+
+        $this->mockFaceServiceWithMatch(array_fill(0, 128, 0.1));
+
+        // 3 tentatives malgré la limite — chacune renvoie 422 limite, PAS échec de reco
+        for ($i = 0; $i < 3; $i++) {
+            $r = $this->postJson('/pointages', [
+                'photo' => UploadedFile::fake()->image("t{$i}.jpg"),
+                'type'  => 'arrivee',
+            ]);
+            $r->assertStatus(422);
+            // Pas de champ "attempts" car ce n'est pas un échec de reco
+            $this->assertNull($r->json('attempts'));
+        }
+
+        // La session n'a pas été incrémentée → un échec réel renvoie attempts=1
+        app()->forgetInstance(FaceRecognitionService::class);
+        $this->mock(FaceRecognitionService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('encode')->andReturn(null);
+        });
+
+        $r = $this->postJson('/pointages', [
+            'photo' => UploadedFile::fake()->image('reel.jpg'),
+            'type'  => 'arrivee',
+        ]);
+        $this->assertEquals(1, $r->json('attempts'));
+    }
+
+    public function test_echec_log_warning_cote_serveur(): void
+    {
+        Log::spy();
+
+        $this->mock(FaceRecognitionService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('encode')->andReturn(null);
+        });
+
+        $this->postJson('/pointages', [
+            'photo' => UploadedFile::fake()->image('floue.jpg'),
+            'type'  => 'arrivee',
+        ]);
+
+        Log::shouldHaveReceived('warning')->once();
     }
 }
