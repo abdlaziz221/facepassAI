@@ -2,38 +2,32 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\Role;
 use App\Http\Requests\StoreDemandeAbsenceRequest;
 use App\Models\DemandeAbsence;
 use App\Models\EmployeProfile;
+use App\Models\User;
+use App\Notifications\NouvelleDemandeAbsenceNotification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 /**
- * Contrôleur des demandes d'absence côté employé (Sprint 4 carte 7, US-050).
- *
- * Routes (employé authentifié) :
- *   - GET  /demandes-absence/create → formulaire de création
- *   - POST /demandes-absence        → enregistre la demande
+ * Contrôleur des demandes d'absence côté employé
+ * (Sprint 4 cartes 7 + 9, US-050).
  */
 class DemandeAbsenceController extends Controller
 {
-    /**
-     * Affiche le formulaire de création d'une demande.
-     */
     public function create(): View
     {
         return view('demandes-absence.create');
     }
 
-    /**
-     * Enregistre une nouvelle demande d'absence pour l'employé connecté.
-     */
     public function store(StoreDemandeAbsenceRequest $request): RedirectResponse
     {
         $user = $request->user();
 
-        // Récupération du profil métier de l'employé connecté
         $profile = EmployeProfile::where('user_id', $user->id)->first();
         if (!$profile) {
             return redirect()
@@ -55,12 +49,20 @@ class DemandeAbsenceController extends Controller
             'commentaire_gestionnaire' => null,
         ]);
 
+        // Sprint 4 carte 9 — Notifier tous les gestionnaires
+        // (on utilise la colonne STI 'role' directement, plus fiable que spatie scope)
+        $gestionnaires = User::where('role', Role::Gestionnaire->value)->get();
+        if ($gestionnaires->isNotEmpty()) {
+            Notification::send($gestionnaires, new NouvelleDemandeAbsenceNotification($demande));
+        }
+
         Log::info('Demande d\'absence créée', [
-            'demande_id' => $demande->id,
-            'employe_id' => $profile->id,
-            'user_id'    => $user->id,
-            'date_debut' => $demande->date_debut->toDateString(),
-            'date_fin'   => $demande->date_fin->toDateString(),
+            'demande_id'              => $demande->id,
+            'employe_id'              => $profile->id,
+            'user_id'                 => $user->id,
+            'gestionnaires_notifies'  => $gestionnaires->count(),
+            'date_debut'              => $demande->date_debut->toDateString(),
+            'date_fin'                => $demande->date_fin->toDateString(),
         ]);
 
         return redirect()
