@@ -53,12 +53,16 @@ Route::middleware('auth')
 | Routes protégées par rôle (Sprint 1, US-015) — exemples
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'role:administrateur'])
+
+
+    Route::middleware(['auth', 'role:administrateur'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        Route::get('/test', fn () => '<h1>✅ Espace Administrateur</h1><p>Accès autorisé. Routes Sprint 6 à venir : gestionnaires, logs.</p>')
-            ->name('test');
+        Route::get('/test', fn () => '...')->name('test');
+        // 👇 AJOUTE CES 2 LIGNES
+        Route::get('/horaires',  [\App\Http\Controllers\HoraireConfigController::class, 'edit'])->name('horaires.edit');
+        Route::put('/horaires',  [\App\Http\Controllers\HoraireConfigController::class, 'update'])->name('horaires.update');
     });
 
 Route::middleware(['auth', 'role:gestionnaire|administrateur'])
