@@ -5,16 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\EmployeProfile;
 use App\Models\Pointage;
 use App\Services\FaceRecognitionService;
+use App\Services\PointageTypeResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Contrôleur du pointage biométrique (Sprint 3, US-032).
+ * Contrôleur du pointage biométrique (Sprint 3 US-032 + Sprint 4 US-034).
  *
  * - GET  /pointer    → affiche la page kiosque (caméra WebRTC)
  * - POST /pointages  → reçoit la photo + type, identifie l'employé, crée le pointage
+ *
+ * Règles métier appliquées :
+ *   - Sprint 3 : reconnaissance faciale (microservice Python)
+ *   - Sprint 4 US-034 : limite de 4 pointages par jour et par employé
  */
 class PointageController extends Controller
 {
@@ -36,10 +41,14 @@ class PointageController extends Controller
      *   4. Compare chaque embedding stocké à celui de la photo
      *   5. Garde le meilleur match (distance la plus faible)
      *   6. Si aucun match, retourne 404
-     *   7. Sinon, crée le Pointage rattaché à l'employé identifié
+     *   7. Si l'employé a déjà fait ses 4 pointages aujourd'hui → 422
+     *   8. Sinon, crée le Pointage rattaché à l'employé identifié
      */
-    public function store(Request $request, FaceRecognitionService $faceService): JsonResponse
-    {
+    public function store(
+        Request $request,
+        FaceRecognitionService $faceService,
+        PointageTypeResolver $resolver
+    ): JsonResponse {
         $validated = $request->validate([
             'photo' => ['required', 'image', 'max:5120'], // 5 Mo max
             'type'  => ['required', Rule::in(Pointage::TYPES)],
@@ -61,8 +70,20 @@ class PointageController extends Controller
             ], 404);
         }
 
+        /** @var EmployeProfile $profile */
+        $profile = $match['profile'];
+
+        // Sprint 4 US-034 : limite de 4 pointages par jour
+        if ($resolver->dayCompleted($profile)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Limite atteinte : " . ($profile->user->name ?? 'Cet employé')
+                    . " a déjà fait ses 4 pointages aujourd'hui.",
+            ], 422);
+        }
+
         $pointage = Pointage::create([
-            'employe_id' => $match['profile']->id,
+            'employe_id' => $profile->id,
             'type'       => $validated['type'],
             'manuel'     => false,
         ]);
@@ -75,9 +96,9 @@ class PointageController extends Controller
                 'created_at' => $pointage->created_at->toIso8601String(),
             ],
             'employe' => [
-                'id'        => $match['profile']->id,
-                'matricule' => $match['profile']->matricule,
-                'nom'       => $match['profile']->user->name ?? null,
+                'id'        => $profile->id,
+                'matricule' => $profile->matricule,
+                'nom'       => $profile->user->name ?? null,
             ],
             'distance'   => $match['distance'],
             'confidence' => $match['confidence'],
