@@ -4,11 +4,9 @@
     $role = $user->role->value ?? 'employe';
     $roleLabel = $user->role->label() ?? 'Utilisateur';
 @endphp
-
 <nav x-data="{ menu: false }" style="border-bottom: 1px solid rgba(255,255,255,0.06);">
     <div style="max-width: 1280px; margin: 0 auto; padding: 14px 32px;
                 display: flex; align-items: center; justify-content: space-between; gap: 24px;">
-
         {{-- LOGO + APP NAME --}}
         <a href="{{ route('dashboard') }}"
            style="display: flex; align-items: center; gap: 10px; color: white;
@@ -18,7 +16,6 @@
                 FacePass<span style="color: #818cf8;">.AI</span>
             </span>
         </a>
-
         {{-- LIENS DE NAV (selon le rôle) --}}
         <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
             <a href="{{ route('dashboard') }}"
@@ -29,7 +26,6 @@
                       transition: all .15s;">
                 Tableau de bord
             </a>
-
             @can('employes.view')
                 <a href="{{ route('employes.index') }}"
                    style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
@@ -39,50 +35,81 @@
                     Employés
                 </a>
             @endcan
-
             @can('pointages.view-own')
-                <a href="#" class="link-muted"
-                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
-                    Pointages
-                </a>
+                {{-- Si gestionnaire/admin : kiosque + pointage manuel via le pointage manuel,
+                     sinon (employé) : kiosque public --}}
+                @if (in_array($role, ['gestionnaire', 'administrateur']))
+                    <a href="{{ route('pointages.manual.create') }}"
+                       style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+                              color: {{ request()->routeIs('pointages.*') ? 'white' : '#9ca3af' }};
+                              background: {{ request()->routeIs('pointages.*') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
+                              text-decoration: none; transition: all .15s;">
+                        Pointages
+                    </a>
+                @else
+                    <a href="{{ route('pointages.create') }}" target="_blank"
+                       style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+                              color: #9ca3af; text-decoration: none; transition: all .15s;">
+                        Pointages
+                    </a>
+                @endif
             @endcan
-
+            {{-- Absences : employé = créer une demande ; admin/gestionnaire/consultant = voir toutes --}}
             @can('absences.view-own')
+                <a href="{{ route('demandes-absence.create') }}"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+                          color: {{ request()->routeIs('demandes-absence.*') ? 'white' : '#9ca3af' }};
+                          background: {{ request()->routeIs('demandes-absence.*') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
+                          text-decoration: none; transition: all .15s;">
+                    Mes absences
+                </a>
+            @elsecan('absences.view-all')
                 <a href="#" class="link-muted"
-                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
-                    Absences
+                   title="Gestion des demandes d'absence — à venir (carte suivante)"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; opacity: 0.55; cursor: not-allowed;">
+                    Demandes d'absence
                 </a>
             @endcan
-
             @can('rapports.view')
                 <a href="#" class="link-muted"
-                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                   title="Module Rapports — à venir (Sprint 5)"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; opacity: 0.55; cursor: not-allowed;">
                     Rapports
                 </a>
             @endcan
-
             @can('horaires.configure')
-                <a href="#" class="link-muted"
-                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                <a href="{{ route('admin.horaires.edit') }}"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+                          color: {{ request()->routeIs('admin.horaires.*') ? 'white' : '#9ca3af' }};
+                          background: {{ request()->routeIs('admin.horaires.*') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
+                          text-decoration: none; transition: all .15s;">
                     Horaires
                 </a>
+                <a href="{{ route('admin.jours-feries.index') }}"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+                          color: {{ request()->routeIs('admin.jours-feries.*') ? 'white' : '#9ca3af' }};
+                          background: {{ request()->routeIs('admin.jours-feries.*') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
+                          text-decoration: none; transition: all .15s;">
+                    Jours fériés
+                </a>
             @endcan
-
             @can('gestionnaires.manage')
                 <a href="#" class="link-muted"
-                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                   title="Module Gestionnaires — à venir (Sprint 6)"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; opacity: 0.55; cursor: not-allowed;">
                     Gestionnaires
                 </a>
             @endcan
-
             @can('logs.view')
                 <a href="#" class="link-muted"
-                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;">
+                   title="Module Logs — à venir (Sprint 6)"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; opacity: 0.55; cursor: not-allowed;">
                     Logs
                 </a>
             @endcan
         </div>
-
+        {{-- NOTIFICATIONS --}}
+        <x-notifications-bell />
         {{-- USER MENU --}}
         <div x-data="{ open: false }" style="position: relative; flex-shrink: 0;">
             <button @click="open = !open"
@@ -105,7 +132,6 @@
                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
                 </svg>
             </button>
-
             <div x-show="open"
                  @click.outside="open = false"
                  x-transition
@@ -116,7 +142,6 @@
                         backdrop-filter: blur(20px); z-index: 50;
                         box-shadow: 0 12px 40px rgba(0,0,0,0.5);"
                  style="display: none;">
-
                 <a href="{{ route('profile.edit') }}"
                    style="display: block; padding: 10px 14px; border-radius: 8px;
                           color: #e5e7eb; text-decoration: none; font-size: 14px;"
@@ -124,9 +149,7 @@
                    onmouseout="this.style.background='transparent'">
                     Mon profil
                 </a>
-
                 <div style="height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0;"></div>
-
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit"
