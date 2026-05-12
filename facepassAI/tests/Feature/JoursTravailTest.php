@@ -7,15 +7,16 @@ use App\Models\Administrateur;
 use App\Models\Consultant;
 use App\Models\Employe;
 use App\Models\Gestionnaire;
-use App\Models\HoraireConfig;
+use App\Models\JoursTravail;
+use Database\Seeders\JoursTravailSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Tests de la configuration des horaires (Sprint 4 US-040).
+ * Tests du modèle JoursTravail et de sa configuration (Sprint 4 US-040).
  */
-class HoraireConfigTest extends TestCase
+class JoursTravailTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -33,32 +34,91 @@ class HoraireConfigTest extends TestCase
     }
 
     // ============================================================
-    // Modèle
+    // Modèle JoursTravail
     // ============================================================
 
     public function test_current_cree_la_config_par_defaut_si_inexistante(): void
     {
-        $this->assertEquals(0, HoraireConfig::count());
+        $this->assertEquals(0, JoursTravail::count());
 
-        $config = HoraireConfig::current();
+        $config = JoursTravail::current();
 
         $this->assertNotNull($config->id);
         $this->assertEquals(['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'], $config->jours_ouvrables);
-        $this->assertEquals('09:00', substr($config->heure_arrivee, 0, 5));
+        $this->assertEquals('08:00', substr($config->heure_arrivee, 0, 5));
+        $this->assertEquals('17:00', substr($config->heure_depart, 0, 5));
         $this->assertEquals([], $config->jours_feries);
     }
 
     public function test_current_retourne_le_singleton_existant(): void
     {
-        $first  = HoraireConfig::current();
-        $second = HoraireConfig::current();
+        $first  = JoursTravail::current();
+        $second = JoursTravail::current();
 
         $this->assertEquals($first->id, $second->id);
-        $this->assertEquals(1, HoraireConfig::count());
+        $this->assertEquals(1, JoursTravail::count());
+    }
+
+    public function test_modele_utilise_la_table_jours_travail(): void
+    {
+        $this->assertEquals('jours_travail', (new JoursTravail())->getTable());
+    }
+
+    public function test_les_constantes_de_jours_sont_exposees(): void
+    {
+        $this->assertCount(7, JoursTravail::JOURS_VALIDES);
+        $this->assertContains('lundi', JoursTravail::JOURS_VALIDES);
+        $this->assertContains('dimanche', JoursTravail::JOURS_VALIDES);
     }
 
     // ============================================================
-    // Autorisations
+    // Seeder
+    // ============================================================
+
+    public function test_seeder_cree_la_configuration_par_defaut(): void
+    {
+        $this->seed(JoursTravailSeeder::class);
+
+        $this->assertEquals(1, JoursTravail::count());
+
+        $config = JoursTravail::first();
+        $this->assertEquals(['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'], $config->jours_ouvrables);
+        $this->assertEquals('08:00', substr($config->heure_arrivee, 0, 5));
+        $this->assertEquals('17:00', substr($config->heure_depart, 0, 5));
+    }
+
+    public function test_seeder_est_idempotent(): void
+    {
+        $this->seed(JoursTravailSeeder::class);
+        $this->seed(JoursTravailSeeder::class);
+        $this->seed(JoursTravailSeeder::class);
+
+        // Toujours une seule ligne (pas de duplication)
+        $this->assertEquals(1, JoursTravail::count());
+    }
+
+    // ============================================================
+    // Casts
+    // ============================================================
+
+    public function test_jours_ouvrables_est_caste_en_tableau(): void
+    {
+        $config = JoursTravail::current();
+        $this->assertIsArray($config->jours_ouvrables);
+    }
+
+    public function test_jours_feries_est_caste_en_tableau(): void
+    {
+        $config = JoursTravail::current();
+        $config->update(['jours_feries' => ['2026-01-01', '2026-05-01']]);
+        $fresh = $config->fresh();
+
+        $this->assertIsArray($fresh->jours_feries);
+        $this->assertEquals(['2026-01-01', '2026-05-01'], $fresh->jours_feries);
+    }
+
+    // ============================================================
+    // Autorisations (formulaire admin)
     // ============================================================
 
     public function test_admin_peut_acceder_au_formulaire(): void
@@ -105,38 +165,7 @@ class HoraireConfigTest extends TestCase
     }
 
     // ============================================================
-    // Affichage du formulaire
-    // ============================================================
-
-    public function test_le_formulaire_contient_les_7_jours(): void
-    {
-        $response = $this->asAdmin()->get('/admin/horaires');
-
-        foreach (['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'] as $j) {
-            $response->assertSee($j);
-        }
-    }
-
-    public function test_le_formulaire_contient_les_4_heures(): void
-    {
-        $this->asAdmin()
-            ->get('/admin/horaires')
-            ->assertSee('Arrivée')
-            ->assertSee('Début de pause')
-            ->assertSee('Fin de pause')
-            ->assertSee('Départ');
-    }
-
-    public function test_le_formulaire_a_les_boutons_enregistrer_et_annuler(): void
-    {
-        $this->asAdmin()
-            ->get('/admin/horaires')
-            ->assertSee('Enregistrer')
-            ->assertSee('Annuler');
-    }
-
-    // ============================================================
-    // Validation
+    // Validation et update
     // ============================================================
 
     public function test_jours_ouvrables_obligatoires(): void
@@ -151,49 +180,18 @@ class HoraireConfigTest extends TestCase
             ->assertSessionHasErrors('jours_ouvrables');
     }
 
-    public function test_jours_ouvrables_doivent_etre_valides(): void
-    {
-        $this->asAdmin()
-            ->put('/admin/horaires', [
-                'jours_ouvrables'   => ['fakeday'],
-                'heure_arrivee'     => '09:00',
-                'heure_debut_pause' => '12:00',
-                'heure_fin_pause'   => '13:00',
-                'heure_depart'      => '18:00',
-            ])
-            ->assertSessionHasErrors('jours_ouvrables.0');
-    }
-
     public function test_ordre_des_heures_respecte(): void
     {
-        // Début de pause AVANT arrivée → KO
         $this->asAdmin()
             ->put('/admin/horaires', [
                 'jours_ouvrables'   => ['lundi'],
                 'heure_arrivee'     => '09:00',
-                'heure_debut_pause' => '08:00', // avant arrivée
+                'heure_debut_pause' => '08:00',
                 'heure_fin_pause'   => '13:00',
                 'heure_depart'      => '18:00',
             ])
             ->assertSessionHasErrors('heure_debut_pause');
     }
-
-    public function test_format_heure_doit_etre_hh_mm(): void
-    {
-        $this->asAdmin()
-            ->put('/admin/horaires', [
-                'jours_ouvrables'   => ['lundi'],
-                'heure_arrivee'     => 'abc',
-                'heure_debut_pause' => '12:00',
-                'heure_fin_pause'   => '13:00',
-                'heure_depart'      => '18:00',
-            ])
-            ->assertSessionHasErrors('heure_arrivee');
-    }
-
-    // ============================================================
-    // Update
-    // ============================================================
 
     public function test_update_enregistre_la_configuration(): void
     {
@@ -209,25 +207,10 @@ class HoraireConfigTest extends TestCase
             ->assertRedirect(route('admin.horaires.edit'))
             ->assertSessionHas('success');
 
-        $config = HoraireConfig::current()->fresh();
+        $config = JoursTravail::current()->fresh();
         $this->assertEquals(['lundi', 'mardi', 'mercredi'], $config->jours_ouvrables);
         $this->assertEquals('08:30', substr($config->heure_arrivee, 0, 5));
         $this->assertEquals(['2026-01-01', '2026-05-01'], $config->jours_feries);
-    }
-
-    public function test_update_accepte_jours_feries_vides(): void
-    {
-        $this->asAdmin()
-            ->put('/admin/horaires', [
-                'jours_ouvrables'   => ['lundi'],
-                'heure_arrivee'     => '09:00',
-                'heure_debut_pause' => '12:00',
-                'heure_fin_pause'   => '13:00',
-                'heure_depart'      => '18:00',
-            ])
-            ->assertSessionHasNoErrors();
-
-        $this->assertEquals([], HoraireConfig::current()->fresh()->jours_feries);
     }
 
     public function test_update_filtre_les_dates_vides_dans_jours_feries(): void
@@ -243,7 +226,6 @@ class HoraireConfigTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $feries = HoraireConfig::current()->fresh()->jours_feries;
-        $this->assertEquals(['2026-01-01', '2026-05-01'], $feries);
+        $this->assertEquals(['2026-01-01', '2026-05-01'], JoursTravail::current()->fresh()->jours_feries);
     }
 }

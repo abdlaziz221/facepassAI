@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\HoraireConfig;
+use App\Models\JoursTravail;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,18 +10,21 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 /**
- * Configuration globale des horaires de l'entreprise (Sprint 4 US-040).
+ * Configuration des jours et horaires de travail (Sprint 4 carte 2, US-040).
  *
  * Routes (admin uniquement) :
  *   - GET  /admin/horaires → formulaire d'édition
  *   - PUT  /admin/horaires → enregistre la configuration
+ *
+ * Le terme UI est "horaires" (URL, view, route name), le terme métier
+ * est "jours_travail" (table et modèle).
  */
 class HoraireConfigController extends Controller
 {
     public function edit(): View
     {
         return view('admin.horaires.edit', [
-            'config' => HoraireConfig::current(),
+            'config' => JoursTravail::current(),
         ]);
     }
 
@@ -29,7 +32,7 @@ class HoraireConfigController extends Controller
     {
         $validated = $request->validate([
             'jours_ouvrables'     => ['required', 'array', 'min:1'],
-            'jours_ouvrables.*'   => ['string', Rule::in(HoraireConfig::JOURS_VALIDES)],
+            'jours_ouvrables.*'   => ['string', Rule::in(JoursTravail::JOURS_VALIDES)],
             'heure_arrivee'       => ['required', 'date_format:H:i'],
             'heure_debut_pause'   => ['required', 'date_format:H:i', 'after:heure_arrivee'],
             'heure_fin_pause'     => ['required', 'date_format:H:i', 'after:heure_debut_pause'],
@@ -43,7 +46,7 @@ class HoraireConfigController extends Controller
             'heure_depart.after'      => "L'heure de départ doit être après la fin de pause.",
         ]);
 
-        $config = HoraireConfig::current();
+        $config = JoursTravail::current();
         $config->update([
             'jours_ouvrables'   => $validated['jours_ouvrables'],
             'heure_arrivee'     => $validated['heure_arrivee'],

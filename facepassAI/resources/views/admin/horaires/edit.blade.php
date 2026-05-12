@@ -30,7 +30,7 @@
                     Jours ouvrables
                 </label>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    @foreach (\App\Models\HoraireConfig::JOURS_VALIDES as $jour)
+                    @foreach (\App\Models\JoursTravail::JOURS_VALIDES as $jour)
                         <label style="cursor: pointer;" x-bind:class="jours.includes('{{ $jour }}') ? 'jour-active' : 'jour-inactive'"
                                class="jour-toggle">
                             <input type="checkbox"
