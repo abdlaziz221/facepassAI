@@ -105,3 +105,10 @@ Route::middleware(['auth', 'role:gestionnaire|administrateur'])->group(function 
     Route::post('/pointages/manuel', [PointageController::class, 'manualStore'])->name('pointages.manual.store');
 });
 Route::post('/pointages', [PointageController::class, 'store'])->name('pointages.store');
+
+
+// Sprint 4 Horaires US-050 — Demandes d'absence (employé)
+Route::middleware(['auth', 'role:employe'])->group(function () {
+    Route::get('/demandes-absence/create', [\App\Http\Controllers\DemandeAbsenceController::class, 'create'])->name('demandes-absence.create');
+    Route::post('/demandes-absence',       [\App\Http\Controllers\DemandeAbsenceController::class, 'store'])->name('demandes-absence.store');
+});
