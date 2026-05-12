@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\EmployeProfile;
 use App\Models\Pointage;
 use App\Services\FaceRecognitionService;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -12,25 +13,30 @@ use Illuminate\Validation\Rule;
 /**
  * Contrôleur du pointage biométrique (Sprint 3, US-032).
  *
- * Workflow de la méthode store() :
- *   1. Valide la photo et le type de pointage (multipart)
- *   2. Encode la photo via le microservice Python → embedding 128D
- *   3. Itère sur tous les EmployeProfile avec un encodage facial stocké
- *   4. Compare chaque embedding stocké à celui de la photo
- *   5. Garde le meilleur match (distance la plus faible)
- *   6. Si aucun match, retourne 404
- *   7. Sinon, crée le Pointage rattaché à l'employé identifié
+ * - GET  /pointer    → affiche la page kiosque (caméra WebRTC)
+ * - POST /pointages  → reçoit la photo + type, identifie l'employé, crée le pointage
  */
 class PointageController extends Controller
 {
     /**
+     * Affiche la page de pointage kiosque (vue Blade avec caméra WebRTC).
+     */
+    public function create(): View
+    {
+        return view('pointer.index');
+    }
+
+    /**
      * Enregistre un pointage à partir d'une photo et d'un type.
      *
-     * Réponses :
-     *   - 201 : pointage créé, employé identifié
-     *   - 422 : validation échouée OU visage non détecté sur la photo
-     *   - 404 : aucun employé ne correspond
-     *   - 503 : microservice de reconnaissance indisponible
+     * Workflow :
+     *   1. Valide la photo et le type
+     *   2. Encode la photo via le microservice Python → embedding 128D
+     *   3. Itère sur tous les EmployeProfile avec un encodage facial stocké
+     *   4. Compare chaque embedding stocké à celui de la photo
+     *   5. Garde le meilleur match (distance la plus faible)
+     *   6. Si aucun match, retourne 404
+     *   7. Sinon, crée le Pointage rattaché à l'employé identifié
      */
     public function store(Request $request, FaceRecognitionService $faceService): JsonResponse
     {
@@ -39,7 +45,6 @@ class PointageController extends Controller
             'type'  => ['required', Rule::in(Pointage::TYPES)],
         ]);
 
-        // 1. Encoder la photo reçue → embedding 128D
         $embedding = $faceService->encode($validated['photo']);
         if (!$embedding) {
             return response()->json([
@@ -48,7 +53,6 @@ class PointageController extends Controller
             ], 422);
         }
 
-        // 2. Trouver l'employé dont le visage correspond le mieux
         $match = $this->findBestMatch($faceService, $embedding);
         if (!$match) {
             return response()->json([
@@ -57,14 +61,12 @@ class PointageController extends Controller
             ], 404);
         }
 
-        // 3. Créer le pointage
         $pointage = Pointage::create([
             'employe_id' => $match['profile']->id,
             'type'       => $validated['type'],
             'manuel'     => false,
         ]);
 
-        // 4. Réponse
         return response()->json([
             'success'  => true,
             'pointage' => [
@@ -72,7 +74,7 @@ class PointageController extends Controller
                 'type'       => $pointage->type,
                 'created_at' => $pointage->created_at->toIso8601String(),
             ],
-            'employe'    => [
+            'employe' => [
                 'id'        => $match['profile']->id,
                 'matricule' => $match['profile']->matricule,
                 'nom'       => $match['profile']->user->name ?? null,
@@ -102,12 +104,12 @@ class PointageController extends Controller
             $reference = $profile->encodage_facial;
 
             if (!is_array($reference) || count($reference) !== 128) {
-                continue; // donnée corrompue, on ignore
+                continue;
             }
 
             $result = $faceService->match($embedding, $reference);
             if (!$result || !($result['match'] ?? false)) {
-                continue; // microservice down ou pas de match
+                continue;
             }
 
             if ($result['distance'] < $bestDistance) {

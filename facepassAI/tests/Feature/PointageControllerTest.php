@@ -12,12 +12,12 @@ use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
- * Tests du PointageController@store (US-032).
+ * Tests du PointageController (US-032).
  *
  * On mocke FaceRecognitionService pour ne pas dépendre du microservice
  * Python en train de tourner. Tous les chemins sont couverts :
- * validation, encode null, aucun match, match unique, meilleur match
- * parmi plusieurs candidats.
+ * page kiosque, validation, encode null, aucun match, match unique,
+ * meilleur match parmi plusieurs candidats.
  */
 class PointageControllerTest extends TestCase
 {
@@ -30,7 +30,30 @@ class PointageControllerTest extends TestCase
     }
 
     // ============================================================
-    // Validation
+    // Page kiosque GET /pointer
+    // ============================================================
+
+    public function test_la_page_kiosque_est_accessible_publiquement(): void
+    {
+        $response = $this->get('/pointer');
+
+        $response->assertStatus(200);
+        $response->assertSee('FacePass');
+        $response->assertSee('Pointage biométrique');
+    }
+
+    public function test_la_page_kiosque_contient_les_4_boutons_de_type(): void
+    {
+        $response = $this->get('/pointer');
+
+        $response->assertSee('Arrivée');
+        $response->assertSee('Début pause');
+        $response->assertSee('Fin pause');
+        $response->assertSee('Départ');
+    }
+
+    // ============================================================
+    // Validation POST /pointages
     // ============================================================
 
     public function test_photo_obligatoire(): void
@@ -92,7 +115,6 @@ class PointageControllerTest extends TestCase
 
     public function test_retourne_404_si_aucun_employe_reconnu(): void
     {
-        // Crée un employé avec un encodage qui ne va PAS matcher
         EmployeProfile::factory()->create([
             'encodage_facial' => array_fill(0, 128, 0.5),
         ]);
@@ -148,7 +170,6 @@ class PointageControllerTest extends TestCase
 
     public function test_choisit_le_meilleur_match_parmi_plusieurs_candidats(): void
     {
-        // 3 employés avec des embeddings différents
         $loin   = EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.9)]);
         $proche = EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.1)]);
         $moyen  = EmployeProfile::factory()->create(['encodage_facial' => array_fill(0, 128, 0.5)]);
@@ -157,7 +178,6 @@ class PointageControllerTest extends TestCase
             $mock->shouldReceive('encode')->once()
                 ->andReturn(array_fill(0, 128, 0.1));
 
-            // Distances simulées : on veut que "proche" gagne
             $mock->shouldReceive('match')
                 ->andReturnUsing(function ($e1, $e2) {
                     $first = $e2[0];
@@ -181,13 +201,11 @@ class PointageControllerTest extends TestCase
 
     public function test_ignore_employes_sans_encodage_facial(): void
     {
-        // Cet employé n'a PAS d'encodage
         EmployeProfile::factory()->create(['encodage_facial' => null]);
 
         $this->mock(FaceRecognitionService::class, function (MockInterface $mock) {
             $mock->shouldReceive('encode')->once()
                 ->andReturn(array_fill(0, 128, 0.1));
-            // match() ne doit jamais etre appele puisque pas de candidat
             $mock->shouldNotReceive('match');
         });
 

@@ -87,5 +87,8 @@ require __DIR__.'/auth.php';
 
 use App\Http\Controllers\PointageController;
 
-// Sprint 3 — Pointage biométrique public (kiosque)
+// // Sprint 3 — Pointage biométrique public (kiosque)
+// Route::post('/pointages', [PointageController::class, 'store'])->name('pointages.store');
+// Sprint 3 — Pointage biométrique (kiosque public)
+Route::get('/pointer', [PointageController::class, 'create'])->name('pointages.create');
 Route::post('/pointages', [PointageController::class, 'store'])->name('pointages.store');
