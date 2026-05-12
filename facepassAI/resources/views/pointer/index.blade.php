@@ -155,6 +155,14 @@
                 buttons.forEach(b => b.disabled = false);
             } catch (err) {
                 statusText.textContent = "Caméra inaccessible. Autorisez l'accès puis rechargez.";
+
+                // Sprint 4 US-036 : fallback caméra → lien vers le mode manuel (gestionnaire)
+                const fallback = document.createElement('a');
+                fallback.href = '{{ route('pointages.manual.create') }}';
+                fallback.textContent = '🛠  Mode pointage manuel (gestionnaire)';
+                fallback.className = 'inline-block mt-6 px-4 py-2 rounded-lg bg-cyan-500/15 border border-cyan-400/40 text-cyan-300 hover:bg-cyan-500/25 hover:text-cyan-200 transition no-underline';
+                statusText.parentElement.appendChild(fallback);
+
                 console.error('getUserMedia failed:', err);
             }
         }

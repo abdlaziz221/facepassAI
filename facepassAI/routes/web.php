@@ -91,4 +91,9 @@ use App\Http\Controllers\PointageController;
 // Route::post('/pointages', [PointageController::class, 'store'])->name('pointages.store');
 // Sprint 3 — Pointage biométrique (kiosque public)
 Route::get('/pointer', [PointageController::class, 'create'])->name('pointages.create');
+// Sprint 4 US-036 — Pointage manuel (gestionnaire / admin)
+Route::middleware(['auth', 'role:gestionnaire|administrateur'])->group(function () {
+    Route::get('/pointages/manuel',  [PointageController::class, 'manualCreate'])->name('pointages.manual.create');
+    Route::post('/pointages/manuel', [PointageController::class, 'manualStore'])->name('pointages.manual.store');
+});
 Route::post('/pointages', [PointageController::class, 'store'])->name('pointages.store');

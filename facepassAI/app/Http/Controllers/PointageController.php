@@ -8,6 +8,7 @@ use App\Services\FaceRecognitionService;
 use App\Services\PointageTypeResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -15,32 +16,31 @@ use Illuminate\Validation\Rule;
 /**
  * Contrôleur du pointage biométrique.
  *
- * - GET  /pointer    → affiche la page kiosque (caméra WebRTC)
- * - POST /pointages  → reçoit la photo + type, identifie l'employé, crée le pointage
+ * Routes :
+ * - GET  /pointer            → page kiosque (caméra WebRTC, public)
+ * - POST /pointages          → reçoit photo + type, identifie l'employé
+ * - GET  /pointages/manuel   → form gestionnaire (auth + role)
+ * - POST /pointages/manuel   → enregistre un pointage manuel
  *
- * Règles métier appliquées :
- *   - Sprint 3 US-032 : reconnaissance faciale (microservice Python)
- *   - Sprint 4 US-034 : limite de 4 pointages par jour et par employé
- *   - Sprint 4 US-035 : gestion des échecs (max 3 tentatives en session)
+ * Règles métier :
+ *   - Sprint 3 US-032 : reconnaissance faciale
+ *   - Sprint 4 US-034 : limite 4 pointages/jour/employé
+ *   - Sprint 4 US-035 : max 3 tentatives en session avant 429
+ *   - Sprint 4 US-036 : pointage manuel par gestionnaire (fallback caméra)
  */
 class PointageController extends Controller
 {
-    /** Nombre maximal de tentatives d'échec en session avant blocage. */
-    public const MAX_FAILED_ATTEMPTS = 3;
-
-    /** Clé de session pour stocker le compteur d'échecs. */
+    public const MAX_FAILED_ATTEMPTS  = 3;
     public const SESSION_FAILURES_KEY = 'pointage_failed_attempts';
 
-    /**
-     * Affiche la page de pointage kiosque (vue Blade avec caméra WebRTC).
-     */
+    /** Page kiosque publique (caméra WebRTC). */
     public function create(): View
     {
         return view('pointer.index');
     }
 
     /**
-     * Enregistre un pointage à partir d'une photo et d'un type.
+     * Enregistre un pointage biométrique (kiosque).
      */
     public function store(
         Request $request,
@@ -52,15 +52,12 @@ class PointageController extends Controller
             'type'  => ['required', Rule::in(Pointage::TYPES)],
         ]);
 
-        // Sprint 4 US-035 : vérifier le compteur d'échecs en session
+        // Limite 3 tentatives en session
         $attempts = (int) $request->session()->get(self::SESSION_FAILURES_KEY, 0);
         if ($attempts >= self::MAX_FAILED_ATTEMPTS) {
             Log::warning('Pointage : limite de tentatives atteinte', [
-                'ip'         => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'attempts'   => $attempts,
+                'ip' => $request->ip(), 'attempts' => $attempts,
             ]);
-
             return response()->json([
                 'success'      => false,
                 'message'      => "Trop d'échecs successifs. Veuillez contacter un gestionnaire.",
@@ -70,33 +67,23 @@ class PointageController extends Controller
             ], 429);
         }
 
-        // 1. Encoder la photo
         $embedding = $faceService->encode($validated['photo']);
         if (!$embedding) {
-            return $this->registerFailure(
-                $request,
+            return $this->registerFailure($request,
                 "Aucun visage détecté sur la photo ou service de reconnaissance indisponible.",
-                422,
-                'face_not_detected'
-            );
+                422, 'face_not_detected');
         }
 
-        // 2. Identifier l'employé
         $match = $this->findBestMatch($faceService, $embedding);
         if (!$match) {
-            return $this->registerFailure(
-                $request,
+            return $this->registerFailure($request,
                 "Aucun employé reconnu sur cette photo.",
-                404,
-                'employe_not_recognized'
-            );
+                404, 'employe_not_recognized');
         }
 
         /** @var EmployeProfile $profile */
         $profile = $match['profile'];
 
-        // Sprint 4 US-034 : limite 4 pointages/jour
-        // Note : ce n'est PAS un échec de reconnaissance, on ne touche pas au compteur.
         if ($resolver->dayCompleted($profile)) {
             return response()->json([
                 'success' => false,
@@ -105,7 +92,6 @@ class PointageController extends Controller
             ], 422);
         }
 
-        // 3. Créer le pointage et reset le compteur d'échecs
         $pointage = Pointage::create([
             'employe_id' => $profile->id,
             'type'       => $validated['type'],
@@ -131,19 +117,82 @@ class PointageController extends Controller
         ], 201);
     }
 
+    // ============================================================
+    // Sprint 4 US-036 — Pointage manuel (fallback caméra)
+    // ============================================================
+
     /**
-     * Enregistre un échec de reconnaissance : incrémente le compteur en session
-     * et journalise l'événement côté serveur.
+     * Affiche le formulaire de pointage manuel (gestionnaire/admin uniquement).
      */
+    public function manualCreate(): View
+    {
+        $employes = EmployeProfile::with('user')
+            ->orderBy('matricule')
+            ->get();
+
+        return view('pointer.manual', compact('employes'));
+    }
+
+    /**
+     * Enregistre un pointage manuel avec motif justificatif.
+     */
+    public function manualStore(Request $request, PointageTypeResolver $resolver): RedirectResponse
+    {
+        $validated = $request->validate([
+            'employe_id' => ['required', 'integer', 'exists:employes,id'],
+            'type'       => ['required', Rule::in(Pointage::TYPES)],
+            'motif'      => ['required', 'string', 'min:5', 'max:500'],
+        ], [
+            'motif.required' => 'Vous devez préciser un motif justifiant ce pointage manuel.',
+            'motif.min'      => 'Le motif doit faire au moins 5 caractères.',
+        ]);
+
+        /** @var EmployeProfile $profile */
+        $profile = EmployeProfile::with('user')->findOrFail($validated['employe_id']);
+
+        // Limite 4 pointages/jour applicable aussi au manuel
+        if ($resolver->dayCompleted($profile)) {
+            return back()
+                ->withErrors([
+                    'employe_id' => $profile->user->name
+                        . ' a déjà fait ses 4 pointages aujourd\'hui.',
+                ])
+                ->withInput();
+        }
+
+        $pointage = Pointage::create([
+            'employe_id'   => $profile->id,
+            'type'         => $validated['type'],
+            'manuel'       => true,
+            'motif_manuel' => $validated['motif'],
+        ]);
+
+        Log::info('Pointage manuel créé', [
+            'pointage_id'     => $pointage->id,
+            'gestionnaire_id' => $request->user()->id,
+            'employe_id'      => $profile->id,
+            'type'            => $validated['type'],
+            'motif'           => $validated['motif'],
+        ]);
+
+        return redirect()
+            ->route('pointages.manual.create')
+            ->with('success',
+                "Pointage manuel ({$validated['type']}) enregistré pour "
+                . ($profile->user->name ?? $profile->matricule) . '.');
+    }
+
+    // ============================================================
+    // Helpers privés
+    // ============================================================
+
     protected function registerFailure(Request $request, string $message, int $status, string $reason): JsonResponse
     {
         $newCount = (int) $request->session()->increment(self::SESSION_FAILURES_KEY);
 
         Log::warning("Pointage : échec de reconnaissance (tentative {$newCount}/" . self::MAX_FAILED_ATTEMPTS . ')', [
-            'reason'     => $reason,
-            'ip'         => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'attempts'   => $newCount,
+            'reason' => $reason, 'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(), 'attempts' => $newCount,
         ]);
 
         $remaining = max(0, self::MAX_FAILED_ATTEMPTS - $newCount);
@@ -161,9 +210,6 @@ class PointageController extends Controller
     }
 
     /**
-     * Cherche l'EmployeProfile dont l'embedding stocké est le plus proche
-     * de celui fourni. Retourne null si aucun match.
-     *
      * @return array{profile: EmployeProfile, distance: float, confidence: float}|null
      */
     protected function findBestMatch(FaceRecognitionService $faceService, array $embedding): ?array
@@ -178,15 +224,10 @@ class PointageController extends Controller
 
         foreach ($candidates as $profile) {
             $reference = $profile->encodage_facial;
-
-            if (!is_array($reference) || count($reference) !== 128) {
-                continue;
-            }
+            if (!is_array($reference) || count($reference) !== 128) continue;
 
             $result = $faceService->match($embedding, $reference);
-            if (!$result || !($result['match'] ?? false)) {
-                continue;
-            }
+            if (!$result || !($result['match'] ?? false)) continue;
 
             if ($result['distance'] < $bestDistance) {
                 $bestDistance = $result['distance'];
