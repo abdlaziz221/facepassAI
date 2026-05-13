@@ -141,3 +141,9 @@ Route::middleware(['auth', 'can:absences.view-own'])->group(function () {
     Route::get('/mes-demandes-absence', [\App\Http\Controllers\DemandeAbsenceController::class, 'mesDemandes'])
         ->name('mes-demandes-absence.index');
 });
+
+// Sprint 5 carte 1 (US-060) — Historique complet des pointages
+Route::middleware(['auth', 'can:pointages.view-all'])->group(function () {
+    Route::get('/historique-pointages', [\App\Http\Controllers\PointageController::class, 'historique'])
+        ->name('pointages.historique');
+});

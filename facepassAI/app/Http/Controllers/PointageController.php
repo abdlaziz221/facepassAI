@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\EmployeProfile;
 use App\Models\Pointage;
 use App\Services\FaceRecognitionService;
+use App\Services\PointageQueryService;
 use App\Services\PointageTypeResolver;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -37,6 +38,51 @@ class PointageController extends Controller
     public function create(): View
     {
         return view('pointer.index');
+    }
+
+    // ========================================================================
+    // Sprint 5 carte 1 (US-060) — Historique complet des pointages
+    // ========================================================================
+
+    /**
+     * Tableau paginé et filtrable des pointages
+     * (vue gestionnaire / consultant / admin).
+     *
+     * Filtres GET : employe_id, date_from, date_to, type, manuel.
+     * Tri GET     : sort (created_at|type|employe_id), dir (asc|desc).
+     */
+    public function historique(Request $request, PointageQueryService $service): View
+    {
+        $filters = [
+            'employe_id' => $request->input('employe_id'),
+            'date_from'  => $request->input('date_from'),
+            'date_to'    => $request->input('date_to'),
+            'type'       => $request->input('type'),
+            'manuel'     => $request->input('manuel'),
+        ];
+
+        $sortBy  = (string) $request->input('sort', 'created_at');
+        $sortDir = (string) $request->input('dir', 'desc');
+
+        $pointages = $service->paginate($filters, $sortBy, $sortDir);
+        $counts    = $service->countsByType($filters);
+
+        // Liste des employés pour le filtre (ceux qui ont au moins 1 pointage)
+        $employeIds = Pointage::query()->select('employe_id')->distinct()->pluck('employe_id');
+        $employes   = EmployeProfile::with('user')
+            ->whereIn('id', $employeIds)
+            ->get()
+            ->sortBy(fn ($e) => $e->user->name ?? '')
+            ->values();
+
+        return view('pointer.historique', compact(
+            'pointages',
+            'counts',
+            'employes',
+            'filters',
+            'sortBy',
+            'sortDir'
+        ));
     }
 
     /**
