@@ -37,7 +37,12 @@ class RapportPresenceExport implements FromCollection, WithHeadings, WithMapping
 
     public function collection(): Collection
     {
-        return $this->pointages;
+        // Sprint 5 carte 11 (US-073) — Si aucun pointage, on insère une ligne
+        // sentinelle (null) qui sera transformée par map() en "Aucune donnée
+        // disponible". Permet de toujours générer un Excel exploitable.
+        return $this->pointages->isEmpty()
+            ? collect([null])
+            : $this->pointages;
     }
 
     /** @return array<int, string> */
@@ -58,6 +63,14 @@ class RapportPresenceExport implements FromCollection, WithHeadings, WithMapping
     /** @return array<int, mixed> */
     public function map($pointage): array
     {
+        // Sprint 5 carte 11 — ligne sentinelle "Aucune donnée disponible"
+        if ($pointage === null) {
+            return [
+                'Aucune donnée disponible pour cette période',
+                '', '', '', '', '', '', '',
+            ];
+        }
+
         $a = $this->retardService->analyserPointage($pointage);
 
         $statut = 'À l\'heure';

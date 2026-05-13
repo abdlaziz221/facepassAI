@@ -267,6 +267,87 @@ class RapportControllerTest extends TestCase
     }
 
     // ========================================================================
+    // Sprint 5 carte 11 (US-073) — Cas rapport vide
+    // ========================================================================
+
+    public function test_pdf_genere_meme_sans_aucun_pointage(): void
+    {
+        // Aucun pointage en base
+        $response = $this->actingAs($this->consultant)
+            ->post(route('rapports.generer'), $this->validPayload(['format' => 'pdf']));
+
+        $response->assertOk();
+        $this->assertStringContainsString(
+            'application/pdf',
+            $response->headers->get('Content-Type')
+        );
+    }
+
+    public function test_vue_pdf_affiche_aucune_donnee_disponible_si_vide(): void
+    {
+        // On teste la vue Blade directement (avant rendu dompdf binaire)
+        $retardService = \App\Services\RetardService::fromCurrent();
+
+        $rendered = view('pdf.rapport-presences', [
+            'pointages'     => collect(),
+            'retardService' => $retardService,
+            'data'          => ['date_debut' => '2026-06-01', 'date_fin' => '2026-06-30'],
+            'employe'       => null,
+            'countRetards'  => 0,
+            'countDeparts'  => 0,
+        ])->render();
+
+        $this->assertStringContainsString('Aucune donnée disponible', $rendered);
+        // Le tableau détail ne doit pas apparaître quand vide
+        $this->assertStringNotContainsString('Détail des pointages', $rendered);
+    }
+
+    public function test_excel_genere_meme_sans_aucun_pointage(): void
+    {
+        // Aucun pointage en base
+        $response = $this->actingAs($this->consultant)
+            ->post(route('rapports.generer'), $this->validPayload(['format' => 'excel']));
+
+        $response->assertOk();
+        $this->assertStringContainsString(
+            'spreadsheet',
+            $response->headers->get('Content-Type')
+        );
+    }
+
+    public function test_excel_contient_ligne_aucune_donnee_si_vide(): void
+    {
+        Excel::fake();
+
+        $this->actingAs($this->consultant)
+            ->post(route('rapports.generer'), $this->validPayload(['format' => 'excel']))
+            ->assertOk();
+
+        Excel::assertDownloaded(
+            'rapport-presences-2026-06-01-au-2026-06-30.xlsx',
+            function (RapportPresenceExport $export) {
+                $collection = $export->collection();
+                if ($collection->count() !== 1 || $collection->first() !== null) {
+                    return false;
+                }
+                $mapped = $export->map(null);
+                return str_contains($mapped[0], 'Aucune donnée disponible');
+            }
+        );
+    }
+
+    public function test_export_class_map_retourne_message_vide_pour_sentinel(): void
+    {
+        $retardService = \App\Services\RetardService::fromCurrent();
+        $export = new RapportPresenceExport(collect(), $retardService, []);
+
+        $row = $export->map(null);
+
+        $this->assertCount(8, $row);
+        $this->assertStringContainsString('Aucune donnée disponible', $row[0]);
+    }
+
+    // ========================================================================
     // Permission
     // ========================================================================
 
