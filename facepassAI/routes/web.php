@@ -170,3 +170,9 @@ Route::middleware(['auth', 'can:rapports.export'])->group(function () {
     Route::post('/rapports/generer', [\App\Http\Controllers\RapportController::class, 'generer'])
         ->name('rapports.generer');
 });
+
+// Sprint 6 carte 2 (US-080) — Vue Mon Salaire (employé)
+Route::middleware(['auth', 'can:salaire.view-own'])->group(function () {
+    Route::get('/mon-salaire', [\App\Http\Controllers\MonSalaireController::class, 'index'])
+        ->name('mon-salaire.index');
+});
