@@ -175,4 +175,7 @@ Route::middleware(['auth', 'can:rapports.export'])->group(function () {
 Route::middleware(['auth', 'can:salaire.view-own'])->group(function () {
     Route::get('/mon-salaire', [\App\Http\Controllers\MonSalaireController::class, 'index'])
         ->name('mon-salaire.index');
+        Route::get('/mon-salaire/pdf', [\App\Http\Controllers\MonSalaireController::class, 'pdf'])
+    ->name('mon-salaire.pdf');
 });
+

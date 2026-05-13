@@ -10,22 +10,35 @@
                     Brut, déductions et net pour le mois sélectionné.
                 </p>
             </div>
-            <form method="GET" action="{{ route('mon-salaire.index') }}"
-                  style="display: flex; gap: 8px; align-items: end;">
-                <div>
-                    <label style="display: block; font-size: 12px; color: #9ca3af; margin-bottom: 6px;">Mois</label>
-                    <input type="month" name="mois" value="{{ $moisInput }}"
-                           style="padding: 10px 12px; background: rgba(0,0,0,0.4);
-                                  border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
-                                  color: white; font-size: 14px;">
-                </div>
-                <button type="submit"
-                        style="padding: 10px 18px; background: linear-gradient(135deg, #6366f1, #8b5cf6);
-                               border: none; border-radius: 8px; color: white; font-size: 14px;
-                               font-weight: 600; cursor: pointer; white-space: nowrap;">
-                    Afficher
-                </button>
-            </form>
+            <div style="display: flex; gap: 8px; align-items: end; flex-wrap: wrap;">
+                <form method="GET" action="{{ route('mon-salaire.index') }}"
+                      style="display: flex; gap: 8px; align-items: end;">
+                    <div>
+                        <label style="display: block; font-size: 12px; color: #9ca3af; margin-bottom: 6px;">Mois</label>
+                        <input type="month" name="mois" value="{{ $moisInput }}"
+                               style="padding: 10px 12px; background: rgba(0,0,0,0.4);
+                                      border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+                                      color: white; font-size: 14px;">
+                    </div>
+                    <button type="submit"
+                            style="padding: 10px 18px; background: linear-gradient(135deg, #6366f1, #8b5cf6);
+                                   border: none; border-radius: 8px; color: white; font-size: 14px;
+                                   font-weight: 600; cursor: pointer; white-space: nowrap;">
+                        Afficher
+                    </button>
+                </form>
+                @if ($profile)
+                    {{-- Sprint 6 carte 3 (US-082) — Téléchargement PDF --}}
+                    <a href="{{ route('mon-salaire.pdf', ['mois' => $moisInput]) }}"
+                       style="padding: 10px 18px; background: rgba(239,68,68,0.1);
+                              border: 1px solid rgba(239,68,68,0.3); border-radius: 8px;
+                              color: #fca5a5; font-size: 14px; font-weight: 600;
+                              text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+                              white-space: nowrap;">
+                        📄 Télécharger PDF
+                    </a>
+                @endif
+            </div>
         </div>
     </x-slot>
 
@@ -42,6 +55,33 @@
 
     {{-- Bannière horaires non configurés --}}
     <x-horaires-warning />
+
+    {{-- Sprint 6 carte 4 (US-083) — Alerte si données incomplètes --}}
+    @if (!empty($manquantes))
+        <div style="margin-bottom: 20px; padding: 16px 20px;
+                    background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.04));
+                    border: 1px solid rgba(245,158,11,0.3); border-radius: 12px;
+                    display: flex; align-items: center; justify-content: space-between;
+                    flex-wrap: wrap; gap: 16px;">
+            <div style="flex: 1; min-width: 240px;">
+                <h3 style="margin: 0 0 4px; color: #fde68a; font-size: 14px; font-weight: 700;">
+                    ⚠ Données incomplètes — calcul partiel
+                </h3>
+                <p style="margin: 0; color: #fcd34d; font-size: 13px; line-height: 1.5;">
+                    Les éléments suivants sont manquants sur votre profil :
+                    <strong style="color: #fde68a;">{{ implode(', ', $manquantes) }}</strong>.
+                    Les montants ci-dessous peuvent être inexacts.
+                </p>
+            </div>
+            <a href="mailto:admin@facepass.ai?subject=Données%20profil%20incomplètes%20-%20{{ urlencode($profile->user->name ?? 'Employe') }}"
+               style="padding: 10px 18px; background: linear-gradient(135deg, #f59e0b, #d97706);
+                      border: none; border-radius: 8px; color: white; font-size: 13px;
+                      font-weight: 600; text-decoration: none; white-space: nowrap;
+                      display: inline-flex; align-items: center; gap: 6px;">
+                Contacter l'administrateur →
+            </a>
+        </div>
+    @endif
 
     {{-- 3 KPI : brut / déductions / net --}}
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

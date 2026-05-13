@@ -57,6 +57,32 @@ class PayrollService
         return (float) ($emp->salaire_brut ?? 0);
     }
 
+    /**
+     * Sprint 6 carte 4 (US-083) — Détection des données manquantes
+     * qui empêchent un calcul complet de la fiche de paie.
+     *
+     * Retourne la liste des champs problématiques (vides) :
+     *   - 'salaire_brut' : non défini ou nul (= 0)
+     *   - 'matricule'    : non défini ou vide
+     *
+     * Si le tableau est vide, les données sont complètes.
+     *
+     * @return array<int, string>
+     */
+    public static function donneesManquantes(EmployeProfile $profile): array
+    {
+        $manquantes = [];
+
+        if ($profile->salaire_brut === null || (float) $profile->salaire_brut <= 0) {
+            $manquantes[] = 'salaire_brut';
+        }
+        if (empty(trim((string) ($profile->matricule ?? '')))) {
+            $manquantes[] = 'matricule';
+        }
+
+        return $manquantes;
+    }
+
     // ========================================================================
     // 2) Déductions (retards + départs anticipés + absences)
     // ========================================================================
