@@ -114,7 +114,7 @@
             </select>
         </div>
 
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; gap: 8px;" x-data="{ copied: false }">
             <button type="submit"
                     style="padding: 10px 16px; background: linear-gradient(135deg, #6366f1, #8b5cf6);
                            border: none; border-radius: 8px; color: white; font-size: 14px;
@@ -128,6 +128,17 @@
                           display: inline-flex; align-items: center;">
                     Reset
                 </a>
+                {{-- Sprint 5 carte 2 (US-061) — Copier l'URL avec les filtres --}}
+                <button type="button"
+                        @click="navigator.clipboard.writeText(window.location.href).then(() => { copied = true; setTimeout(() => copied = false, 2000); })"
+                        title="Copier l'URL avec ces filtres dans le presse-papiers"
+                        style="padding: 10px 12px; background: rgba(99,102,241,0.1);
+                               border: 1px solid rgba(99,102,241,0.25); border-radius: 8px;
+                               color: #a5b4fc; font-size: 13px; cursor: pointer;
+                               display: inline-flex; align-items: center; gap: 6px;">
+                    <span x-show="!copied">📋 Copier le lien</span>
+                    <span x-show="copied" x-cloak style="color: #6ee7b7;">✓ Copié !</span>
+                </button>
             @endif
         </div>
     </form>
