@@ -73,9 +73,11 @@
                 </a>
             @endcan
             @can('rapports.view')
-                <a href="#" class="link-muted"
-                   title="Module Rapports — à venir (Sprint 5)"
-                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; opacity: 0.55; cursor: not-allowed;">
+                <a href="{{ route('rapports.index') }}"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+                          color: {{ request()->routeIs('rapports.*') ? 'white' : '#9ca3af' }};
+                          background: {{ request()->routeIs('rapports.*') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
+                          text-decoration: none; transition: all .15s;">
                     Rapports
                 </a>
             @endcan

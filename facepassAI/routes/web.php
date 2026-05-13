@@ -162,3 +162,11 @@ Route::middleware(['auth', 'can:rapports.export'])->group(function () {
     Route::get('/test-export-excel', [\App\Http\Controllers\ExportTestController::class, 'excel'])
         ->name('test.export.excel');
 });
+
+// Sprint 5 cartes 8-9-10 (US-070 / US-071 / US-072) — Module Rapports
+Route::middleware(['auth', 'can:rapports.export'])->group(function () {
+    Route::get('/rapports', [\App\Http\Controllers\RapportController::class, 'index'])
+        ->name('rapports.index');
+    Route::post('/rapports/generer', [\App\Http\Controllers\RapportController::class, 'generer'])
+        ->name('rapports.generer');
+});
