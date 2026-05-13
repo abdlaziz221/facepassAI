@@ -7,6 +7,9 @@ use App\Models\Pointage;
 use App\Services\FaceRecognitionService;
 use App\Services\PointageQueryService;
 use App\Services\PointageTypeResolver;
+use App\Services\RetardService;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -83,6 +86,151 @@ class PointageController extends Controller
             'sortBy',
             'sortDir'
         ));
+    }
+
+    // ========================================================================
+    // Sprint 5 carte 4 (US-062) — Vue retards & départs anticipés
+    // ========================================================================
+
+    /**
+     * Liste filtrable des pointages anormaux (retards d'arrivée/retour de
+     * pause, départs anticipés / pauses anticipées) avec écart en minutes.
+     *
+     * Filtres GET : employe_id, date_from, date_to, categorie
+     *   - categorie = 'retard' | 'depart_anticipe' | null (tous)
+     */
+    public function retards(
+        Request $request,
+        PointageQueryService $queryService
+    ): View {
+        // RetardService lit le singleton JoursTravail à la construction —
+        // on l'instancie à la main pour éviter une injection avec un model vide.
+        $retardService = RetardService::fromCurrent();
+
+        $filters = [
+            'employe_id' => $request->input('employe_id'),
+            'date_from'  => $request->input('date_from'),
+            'date_to'    => $request->input('date_to'),
+        ];
+        $categorie = $request->input('categorie'); // 'retard' | 'depart_anticipe' | null
+
+        // On charge les pointages filtrés (base), puis on applique le
+        // prédicat retard/depart-anticipé en PHP (logique portée par le
+        // RetardService et donc portable entre SGBD).
+        $all = $queryService->query($filters)->get();
+
+        $filtered = $all->filter(function ($p) use ($retardService, $categorie) {
+            $isR  = $retardService->isRetard($p->type, $p->created_at);
+            $isDA = $retardService->isDepartAnticipe($p->type, $p->created_at);
+
+            if (!$isR && !$isDA) {
+                return false;
+            }
+            if ($categorie === 'retard' && !$isR) {
+                return false;
+            }
+            if ($categorie === 'depart_anticipe' && !$isDA) {
+                return false;
+            }
+            return true;
+        })->values();
+
+        // Pagination manuelle (puisque le filtrage est PHP-side)
+        $perPage = 20;
+        $page    = max(1, (int) $request->input('page', 1));
+        $slice   = $filtered->slice(($page - 1) * $perPage, $perPage)->values();
+
+        // Attacher l'analyse à chaque pointage pour la vue
+        $slice->each(function ($p) use ($retardService) {
+            $p->analyse = $retardService->analyserPointage($p);
+        });
+
+        $pointages = new LengthAwarePaginator(
+            $slice,
+            $filtered->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        // KPI globaux (sur le set filtré par employé/date, sans filtre catégorie)
+        $countRetards = $all->filter(
+            fn ($p) => $retardService->isRetard($p->type, $p->created_at)
+        )->count();
+        $countDeparts = $all->filter(
+            fn ($p) => $retardService->isDepartAnticipe($p->type, $p->created_at)
+        )->count();
+
+        // Liste des employés ayant des pointages (filtre dropdown)
+        $employeIds = Pointage::query()->select('employe_id')->distinct()->pluck('employe_id');
+        $employes   = EmployeProfile::with('user')
+            ->whereIn('id', $employeIds)
+            ->get()
+            ->sortBy(fn ($e) => $e->user->name ?? '')
+            ->values();
+
+        return view('pointer.retards', [
+            'pointages'    => $pointages,
+            'employes'     => $employes,
+            'filters'      => array_merge($filters, ['categorie' => $categorie]),
+            'countRetards' => $countRetards,
+            'countDeparts' => $countDeparts,
+        ]);
+    }
+
+    /**
+     * Export CSV rapide de la même vue (mêmes filtres + catégorie).
+     */
+    public function exportRetards(
+        Request $request,
+        PointageQueryService $queryService
+    ): StreamedResponse {
+        $retardService = RetardService::fromCurrent();
+
+        $filters = [
+            'employe_id' => $request->input('employe_id'),
+            'date_from'  => $request->input('date_from'),
+            'date_to'    => $request->input('date_to'),
+        ];
+        $categorie = $request->input('categorie');
+
+        $rows = $queryService->query($filters)->get()->filter(function ($p) use ($retardService, $categorie) {
+            $isR  = $retardService->isRetard($p->type, $p->created_at);
+            $isDA = $retardService->isDepartAnticipe($p->type, $p->created_at);
+            if (!$isR && !$isDA) return false;
+            if ($categorie === 'retard' && !$isR) return false;
+            if ($categorie === 'depart_anticipe' && !$isDA) return false;
+            return true;
+        });
+
+        $filename = 'retards-' . now()->format('Ymd-His') . '.csv';
+
+        return response()->streamDownload(function () use ($rows, $retardService) {
+            $out = fopen('php://output', 'w');
+            // BOM UTF-8 pour Excel
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, [
+                'Employé', 'Matricule', 'Date', 'Heure', 'Type',
+                'Heure théorique', 'Écart (min)', 'Catégorie',
+            ], ';');
+
+            foreach ($rows as $p) {
+                $a = $retardService->analyserPointage($p);
+                fputcsv($out, [
+                    $p->employe->user->name ?? ('#' . $p->employe_id),
+                    $p->employe->matricule ?? '',
+                    $p->created_at->format('d/m/Y'),
+                    $a['heure_reelle'],
+                    $p->type,
+                    $a['heure_theorique'] ?? '',
+                    $a['ecart_minutes'],
+                    $a['is_retard'] ? 'Retard' : 'Départ anticipé',
+                ], ';');
+            }
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     /**

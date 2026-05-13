@@ -147,3 +147,11 @@ Route::middleware(['auth', 'can:pointages.view-all'])->group(function () {
     Route::get('/historique-pointages', [\App\Http\Controllers\PointageController::class, 'historique'])
         ->name('pointages.historique');
 });
+
+// Sprint 5 carte 4 (US-062) — Retards & départs anticipés
+Route::middleware(['auth', 'can:pointages.view-all'])->group(function () {
+    Route::get('/retards-departs', [\App\Http\Controllers\PointageController::class, 'retards'])
+        ->name('pointages.retards');
+    Route::get('/retards-departs/export', [\App\Http\Controllers\PointageController::class, 'exportRetards'])
+        ->name('pointages.retards.export');
+});
