@@ -155,3 +155,10 @@ Route::middleware(['auth', 'can:pointages.view-all'])->group(function () {
     Route::get('/retards-departs/export', [\App\Http\Controllers\PointageController::class, 'exportRetards'])
         ->name('pointages.retards.export');
 });
+// Sprint 5 cartes 6 & 7 — Routes de test pour vérifier l'install dompdf + excel
+Route::middleware(['auth', 'can:rapports.export'])->group(function () {
+    Route::get('/test-export-pdf',   [\App\Http\Controllers\ExportTestController::class, 'pdf'])
+        ->name('test.export.pdf');
+    Route::get('/test-export-excel', [\App\Http\Controllers\ExportTestController::class, 'excel'])
+        ->name('test.export.excel');
+});
