@@ -50,4 +50,25 @@ class JoursTravail extends Model
             ]
         );
     }
+
+    /**
+     * Sprint 5 carte 5 (US-063) — La configuration a-t-elle été modifiée par l'admin ?
+     *
+     * On considère qu'elle est configurée si elle a été modifiée après sa
+     * création initiale (updated_at significativement après created_at).
+     * Sinon on est encore sur les defaults auto-créés par current().
+     */
+    public function isConfigured(): bool
+    {
+        if (!$this->created_at || !$this->updated_at) {
+            return false;
+        }
+        return abs($this->updated_at->diffInSeconds($this->created_at)) > 2;
+    }
+
+    /** Raccourci : la config singleton actuelle est-elle configurée ? */
+    public static function isCurrentConfigured(): bool
+    {
+        return static::current()->isConfigured();
+    }
 }
