@@ -51,7 +51,8 @@ class UpdateHoraireRequestTest extends TestCase
         $this->assertArrayHasKey('heure_debut_pause', $rules);
         $this->assertArrayHasKey('heure_fin_pause', $rules);
         $this->assertArrayHasKey('heure_depart', $rules);
-        $this->assertArrayHasKey('jours_feries', $rules);
+        // jours_feries a été extrait dans une table dédiée (Sprint 4 carte 5),
+        // n'est plus dans les rules de UpdateHoraireRequest.
     }
 
     public function test_le_form_request_definit_des_messages_personnalises(): void

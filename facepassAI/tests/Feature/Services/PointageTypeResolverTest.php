@@ -91,10 +91,17 @@ class PointageTypeResolverTest extends TestCase
     public function test_pointages_d_hier_sont_ignores(): void
     {
         // Hier l'employé a fait toute sa journée
-        Pointage::factory()->for($this->employe, 'employe')->arrivee()
-            ->create(['created_at' => now()->subDay()]);
-        Pointage::factory()->for($this->employe, 'employe')->depart()
-            ->create(['created_at' => now()->subDay()->addHours(8)]);
+        // ⚠ Eloquent traite created_at comme immutable apres insert,
+        //   forceFill + save ne suffit pas. On passe par DB::table directement.
+        $arr = Pointage::factory()->for($this->employe, 'employe')->arrivee()->create();
+        $dep = Pointage::factory()->for($this->employe, 'employe')->depart()->create();
+
+        \Illuminate\Support\Facades\DB::table('pointages')
+            ->where('id', $arr->id)
+            ->update(['created_at' => now()->subDay()]);
+        \Illuminate\Support\Facades\DB::table('pointages')
+            ->where('id', $dep->id)
+            ->update(['created_at' => now()->subDay()->addHours(8)]);
 
         // Aujourd'hui, on attend une nouvelle arrivée
         $this->assertEquals(

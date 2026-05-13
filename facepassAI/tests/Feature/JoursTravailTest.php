@@ -47,7 +47,6 @@ class JoursTravailTest extends TestCase
         $this->assertEquals(['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi'], $config->jours_ouvrables);
         $this->assertEquals('08:00', substr($config->heure_arrivee, 0, 5));
         $this->assertEquals('17:00', substr($config->heure_depart, 0, 5));
-        $this->assertEquals([], $config->jours_feries);
     }
 
     public function test_current_retourne_le_singleton_existant(): void
@@ -107,15 +106,9 @@ class JoursTravailTest extends TestCase
         $this->assertIsArray($config->jours_ouvrables);
     }
 
-    public function test_jours_feries_est_caste_en_tableau(): void
-    {
-        $config = JoursTravail::current();
-        $config->update(['jours_feries' => ['2026-01-01', '2026-05-01']]);
-        $fresh = $config->fresh();
-
-        $this->assertIsArray($fresh->jours_feries);
-        $this->assertEquals(['2026-01-01', '2026-05-01'], $fresh->jours_feries);
-    }
+    // Note : le champ jours_feries du modèle a été extrait dans une table
+    // dédiée JourFerie (Sprint 4 carte 5). Les tests sur ce champ sont
+    // remplacés par JourFerieTest.
 
     // ============================================================
     // Autorisations (formulaire admin)
@@ -202,7 +195,6 @@ class JoursTravailTest extends TestCase
                 'heure_debut_pause' => '12:30',
                 'heure_fin_pause'   => '13:30',
                 'heure_depart'      => '17:30',
-                'jours_feries'      => ['2026-01-01', '2026-05-01'],
             ])
             ->assertRedirect(route('admin.horaires.edit'))
             ->assertSessionHas('success');
@@ -210,22 +202,5 @@ class JoursTravailTest extends TestCase
         $config = JoursTravail::current()->fresh();
         $this->assertEquals(['lundi', 'mardi', 'mercredi'], $config->jours_ouvrables);
         $this->assertEquals('08:30', substr($config->heure_arrivee, 0, 5));
-        $this->assertEquals(['2026-01-01', '2026-05-01'], $config->jours_feries);
-    }
-
-    public function test_update_filtre_les_dates_vides_dans_jours_feries(): void
-    {
-        $this->asAdmin()
-            ->put('/admin/horaires', [
-                'jours_ouvrables'   => ['lundi'],
-                'heure_arrivee'     => '09:00',
-                'heure_debut_pause' => '12:00',
-                'heure_fin_pause'   => '13:00',
-                'heure_depart'      => '18:00',
-                'jours_feries'      => ['2026-01-01', '', '2026-05-01', null],
-            ])
-            ->assertSessionHasNoErrors();
-
-        $this->assertEquals(['2026-01-01', '2026-05-01'], JoursTravail::current()->fresh()->jours_feries);
     }
 }
