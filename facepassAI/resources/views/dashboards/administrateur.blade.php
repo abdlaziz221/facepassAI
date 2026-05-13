@@ -18,29 +18,61 @@
             </span>
         </div>
     </x-slot>
-    {{-- KPIs globaux --}}
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
-        <div class="card card-stat">
-            <div class="label">Utilisateurs total</div>
-            <div class="value">{{ $stats['total_users'] }}</div>
-            <div class="delta">comptes actifs</div>
+    {{-- Sprint 6 carte 12 (US-102) — Alertes priorisées --}}
+    <x-dashboard-alerts :alertes="$alertes ?? collect()" />
+
+    {{-- Sprint 6 carte 10 (US-100) — KPIs du jour --}}
+    <h2 class="section-title" style="margin-top: 0;">Aujourd'hui</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        <div class="card card-stat" style="border-color: rgba(16,185,129,0.3);">
+            <div class="label">Présents</div>
+            <div class="value" style="background: linear-gradient(135deg, #6ee7b7, #10b981);
+                -webkit-background-clip: text; background-clip: text; color: transparent;">
+                {{ $kpi['presents'] ?? 0 }}<span style="font-size: 16px; color: #6b7280;">/{{ $kpi['total_employes'] ?? 0 }}</span>
+            </div>
+            <div class="delta" style="color: #6ee7b7;">{{ $kpi['taux_presence'] ?? 0 }}% de présence</div>
         </div>
         <div class="card card-stat">
-            <div class="label">Gestionnaires</div>
-            <div class="value">{{ $stats['gestionnaires'] }}</div>
-            <div class="delta" style="color: #6b7280;">{{ $stats['consultants'] }} consultants</div>
+            <div class="label">Retards du jour</div>
+            <div class="value" style="background: linear-gradient(135deg, #fde68a, #f59e0b);
+                -webkit-background-clip: text; background-clip: text; color: transparent;">
+                {{ $kpi['retards'] ?? 0 }}
+            </div>
+            <div class="delta" style="color: #fde68a;">arrivées après l'heure</div>
         </div>
         <div class="card card-stat">
-            <div class="label">Employés</div>
-            <div class="value">{{ $stats['employes'] }}</div>
-            <div class="delta">en activité</div>
+            <div class="label">Absents</div>
+            <div class="value" style="background: linear-gradient(135deg, #fca5a5, #ef4444);
+                -webkit-background-clip: text; background-clip: text; color: transparent;">
+                {{ $kpi['absents'] ?? 0 }}
+            </div>
+            <div class="delta" style="color: #fca5a5;">sans pointage ni congé</div>
         </div>
-        <div class="card card-stat">
-            <div class="label">Événements logs</div>
-            <div class="value">247</div>
-            <div class="delta" style="color: #6b7280;">dernières 24h</div>
+        <div class="card card-stat" style="border-color: rgba(99,102,241,0.3);">
+            <div class="label">Demandes en attente</div>
+            <div class="value" style="background: linear-gradient(135deg, #a5b4fc, #6366f1);
+                -webkit-background-clip: text; background-clip: text; color: transparent;">
+                {{ $kpi['demandes_en_attente'] ?? 0 }}
+            </div>
+            <div class="delta" style="color: #a5b4fc;">à traiter</div>
         </div>
     </div>
+
+    {{-- Sprint 6 carte 11 (US-101) — Graphiques Chart.js --}}
+    <h2 class="section-title">Évolution sur 30 jours</h2>
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px;">
+        <div class="card" style="padding: 20px; min-height: 260px;">
+            <h3 style="margin: 0 0 12px; font-size: 14px; color: #d1d5db;">Présences par jour</h3>
+            <canvas id="chartPresences30j"></canvas>
+        </div>
+        <div class="card" style="padding: 20px; min-height: 260px;">
+            <h3 style="margin: 0 0 12px; font-size: 14px; color: #d1d5db;">Répartition des demandes</h3>
+            <canvas id="chartStatutsAbsences"></canvas>
+        </div>
+    </div>
+
+    {{-- Composition des comptes --}}
+    <h2 class="section-title">Composition des comptes</h2>
     {{-- Répartition par rôle --}}
     <h2 class="section-title">Répartition des comptes</h2>
     <div class="card" style="padding: 24px;">
@@ -122,4 +154,70 @@
             </div>
         </a>
     </div>
+
+    {{-- Sprint 6 carte 11 (US-101) — Chart.js via CDN --}}
+    @if (!empty($charts))
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script>
+            (function () {
+                const textColor = 'rgba(229,231,235,0.85)';
+                const gridColor = 'rgba(255,255,255,0.08)';
+                Chart.defaults.color = textColor;
+                Chart.defaults.borderColor = gridColor;
+                Chart.defaults.font.family = 'inherit';
+
+                // Courbe : présences sur 30 jours
+                const presEl = document.getElementById('chartPresences30j');
+                if (presEl) {
+                    new Chart(presEl, {
+                        type: 'line',
+                        data: {
+                            labels: @json($charts['presences30']['labels']),
+                            datasets: [{
+                                label: 'Employés présents',
+                                data: @json($charts['presences30']['data']),
+                                borderColor: '#6366f1',
+                                backgroundColor: 'rgba(99,102,241,0.15)',
+                                tension: 0.35,
+                                fill: true,
+                                pointRadius: 2,
+                                pointHoverRadius: 5,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: gridColor } },
+                                x: { grid: { display: false } },
+                            },
+                        }
+                    });
+                }
+
+                // Camembert : répartition des statuts d'absence
+                const statsEl = document.getElementById('chartStatutsAbsences');
+                if (statsEl) {
+                    new Chart(statsEl, {
+                        type: 'doughnut',
+                        data: {
+                            labels: @json($charts['statutsAbsences']['labels']),
+                            datasets: [{
+                                data: @json($charts['statutsAbsences']['data']),
+                                backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
+                                borderColor: '#0f111a',
+                                borderWidth: 2,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+                        }
+                    });
+                }
+            })();
+        </script>
+    @endif
 </x-app-layout>

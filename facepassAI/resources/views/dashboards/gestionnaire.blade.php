@@ -18,29 +18,51 @@
             </a>
         </div>
     </x-slot>
-    {{-- KPIs équipe --}}
+    {{-- Sprint 6 carte 12 (US-102) — Alertes priorisées --}}
+    <x-dashboard-alerts :alertes="$alertes ?? collect()" />
+
+    {{-- Sprint 6 carte 10 (US-100) — KPIs du jour (réels) --}}
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
         <div class="card card-stat">
             <div class="label">Présents aujourd'hui</div>
-            <div class="value">{{ max(0, $stats['employes'] - 2) }}<span style="font-size: 18px; color: #6b7280;">/{{ $stats['employes'] }}</span></div>
-            <div class="delta">94% de taux</div>
+            <div class="value">
+                {{ $kpi['presents'] ?? 0 }}<span style="font-size: 18px; color: #6b7280;">/{{ $kpi['total_employes'] ?? 0 }}</span>
+            </div>
+            <div class="delta">{{ $kpi['taux_presence'] ?? 0 }}% de taux</div>
         </div>
         <div class="card card-stat">
             <div class="label">Retards aujourd'hui</div>
-            <div class="value">2</div>
+            <div class="value">{{ $kpi['retards'] ?? 0 }}</div>
             <div class="delta" style="color: #fde68a;">à vérifier</div>
         </div>
         <div class="card card-stat" style="border-color: rgba(234, 179, 8, 0.3);">
             <div class="label">Demandes en attente</div>
-            <div class="value" style="background: linear-gradient(135deg, #fde68a, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent;">5</div>
+            <div class="value" style="background: linear-gradient(135deg, #fde68a, #f59e0b); -webkit-background-clip: text; background-clip: text; color: transparent;">
+                {{ $kpi['demandes_en_attente'] ?? 0 }}
+            </div>
             <div class="delta" style="color: #fde68a;">à valider</div>
         </div>
         <div class="card card-stat">
-            <div class="label">Total employés</div>
-            <div class="value">{{ $stats['employes'] }}</div>
-            <div class="delta" style="color: #6b7280;">actifs</div>
+            <div class="label">Absents</div>
+            <div class="value" style="color: #fca5a5;">{{ $kpi['absents'] ?? 0 }}</div>
+            <div class="delta" style="color: #fca5a5;">sans pointage ni congé</div>
         </div>
     </div>
+
+    {{-- Sprint 6 carte 11 (US-101) — Graphiques --}}
+    @if (!empty($charts))
+        <h2 class="section-title">Évolution sur 30 jours</h2>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px;">
+            <div class="card" style="padding: 20px; min-height: 260px;">
+                <h3 style="margin: 0 0 12px; font-size: 14px; color: #d1d5db;">Présences par jour</h3>
+                <canvas id="chartPresences30j"></canvas>
+            </div>
+            <div class="card" style="padding: 20px; min-height: 260px;">
+                <h3 style="margin: 0 0 12px; font-size: 14px; color: #d1d5db;">Répartition des demandes</h3>
+                <canvas id="chartStatutsAbsences"></canvas>
+            </div>
+        </div>
+    @endif
     {{-- Actions rapides --}}
     <h2 class="section-title">Actions de gestion</h2>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;">
@@ -89,4 +111,54 @@
             </div>
         </a>
     </div>
+
+    {{-- Sprint 6 carte 11 (US-101) — Chart.js --}}
+    @if (!empty($charts))
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script>
+            (function () {
+                Chart.defaults.color = 'rgba(229,231,235,0.85)';
+                Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
+                const presEl = document.getElementById('chartPresences30j');
+                if (presEl) {
+                    new Chart(presEl, {
+                        type: 'line',
+                        data: {
+                            labels: @json($charts['presences30']['labels']),
+                            datasets: [{
+                                label: 'Employés présents',
+                                data: @json($charts['presences30']['data']),
+                                borderColor: '#6366f1',
+                                backgroundColor: 'rgba(99,102,241,0.15)',
+                                tension: 0.35, fill: true, pointRadius: 2, pointHoverRadius: 5,
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+                        }
+                    });
+                }
+                const statsEl = document.getElementById('chartStatutsAbsences');
+                if (statsEl) {
+                    new Chart(statsEl, {
+                        type: 'doughnut',
+                        data: {
+                            labels: @json($charts['statutsAbsences']['labels']),
+                            datasets: [{
+                                data: @json($charts['statutsAbsences']['data']),
+                                backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
+                                borderColor: '#0f111a', borderWidth: 2,
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+                        }
+                    });
+                }
+            })();
+        </script>
+    @endif
 </x-app-layout>
