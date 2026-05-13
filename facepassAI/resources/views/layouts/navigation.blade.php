@@ -98,9 +98,11 @@
                 </a>
             @endcan
             @can('gestionnaires.manage')
-                <a href="#" class="link-muted"
-                   title="Module Gestionnaires — à venir (Sprint 6)"
-                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; opacity: 0.55; cursor: not-allowed;">
+                <a href="{{ route('admin.gestionnaires.index') }}"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+                          color: {{ request()->routeIs('admin.gestionnaires.*') ? 'white' : '#9ca3af' }};
+                          background: {{ request()->routeIs('admin.gestionnaires.*') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
+                          text-decoration: none; transition: all .15s;">
                     Gestionnaires
                 </a>
             @endcan

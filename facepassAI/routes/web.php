@@ -179,3 +179,11 @@ Route::middleware(['auth', 'can:salaire.view-own'])->group(function () {
     ->name('mon-salaire.pdf');
 });
 
+// Sprint 6 carte 5 (US-090) — CRUD gestionnaires (admin)
+Route::middleware(['auth', 'can:gestionnaires.manage'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::resource('gestionnaires', \App\Http\Controllers\Admin\GestionnaireController::class)
+            ->except(['show']);
+    });

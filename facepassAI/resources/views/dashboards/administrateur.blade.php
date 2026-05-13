@@ -76,7 +76,7 @@
     {{-- Actions admin --}}
     <h2 class="section-title">Administration</h2>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;">
-        <a href="#" class="quick-action" title="Gestion des gestionnaires — à venir (Sprint 6)" style="opacity: 0.55; cursor: not-allowed;">
+        <a href="{{ route('admin.gestionnaires.index') }}" class="quick-action">
             <span class="icon">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z"/>
