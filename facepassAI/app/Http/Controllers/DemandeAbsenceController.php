@@ -86,6 +86,49 @@ class DemandeAbsenceController extends Controller
     }
 
     // ========================================================================
+    // Sprint 4 carte 12 (US-054) — Historique des demandes côté employé
+    // ========================================================================
+
+    /**
+     * Page d'historique pour l'employé connecté.
+     * Liste toutes ses demandes (en attente, validées, refusées),
+     * triées par date de début décroissante.
+     */
+    public function mesDemandes(Request $request): View
+    {
+        $user = $request->user();
+        $profile = EmployeProfile::where('user_id', $user->id)->first();
+
+        if (!$profile) {
+            $demandes = DemandeAbsence::query()->whereRaw('1 = 0')->paginate(15);
+            $counts = ['total' => 0, 'en_attente' => 0, 'validee' => 0, 'refusee' => 0];
+            return view('demandes-absence.mes-demandes', compact('demandes', 'counts'));
+        }
+
+        $demandes = DemandeAbsence::query()
+            ->with('gestionnaire')
+            ->where('employe_id', $profile->id)
+            ->orderByDesc('date_debut')
+            ->orderByDesc('id')
+            ->paginate(15);
+
+        // Compteurs par statut pour l'en-tête (3 cartes KPI)
+        $countsRaw = DemandeAbsence::where('employe_id', $profile->id)
+            ->selectRaw('statut, COUNT(*) as n')
+            ->groupBy('statut')
+            ->pluck('n', 'statut');
+
+        $counts = [
+            'total'      => (int) $countsRaw->sum(),
+            'en_attente' => (int) ($countsRaw[DemandeAbsence::STATUT_EN_ATTENTE] ?? 0),
+            'validee'    => (int) ($countsRaw[DemandeAbsence::STATUT_VALIDEE]    ?? 0),
+            'refusee'    => (int) ($countsRaw[DemandeAbsence::STATUT_REFUSEE]    ?? 0),
+        ];
+
+        return view('demandes-absence.mes-demandes', compact('demandes', 'counts'));
+    }
+
+    // ========================================================================
     // Côté gestionnaire / admin (Sprint 4 carte 10 — US-052)
     // ========================================================================
 

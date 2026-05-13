@@ -69,6 +69,17 @@
                 <div class="subtitle">Congé, maladie, autre motif</div>
             </div>
         </a>
+        <a href="{{ route('mes-demandes-absence.index') }}" class="quick-action">
+            <span class="icon">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"/>
+                </svg>
+            </span>
+            <div>
+                <div class="title">Mes demandes d'absence</div>
+                <div class="subtitle">Suivre le statut de mes demandes</div>
+            </div>
+        </a>
         <a href="#" class="quick-action" title="Mon salaire — à venir" style="opacity: 0.55; cursor: not-allowed;">
             <span class="icon">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">

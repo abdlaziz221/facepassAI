@@ -56,10 +56,10 @@
             @endcan
             {{-- Absences : employé = créer une demande ; admin/gestionnaire/consultant = voir toutes --}}
             @can('absences.view-own')
-                <a href="{{ route('demandes-absence.create') }}"
+                <a href="{{ route('mes-demandes-absence.index') }}"
                    style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
-                          color: {{ request()->routeIs('demandes-absence.*') ? 'white' : '#9ca3af' }};
-                          background: {{ request()->routeIs('demandes-absence.*') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
+                          color: {{ request()->routeIs('mes-demandes-absence.*') || request()->routeIs('demandes-absence.create') ? 'white' : '#9ca3af' }};
+                          background: {{ request()->routeIs('mes-demandes-absence.*') || request()->routeIs('demandes-absence.create') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
                           text-decoration: none; transition: all .15s;">
                     Mes absences
                 </a>

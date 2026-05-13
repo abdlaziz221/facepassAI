@@ -135,3 +135,9 @@ Route::middleware(['auth', 'can:absences.validate'])->group(function () {
         ->name('demandes-absence.refuser')
         ->whereNumber('demande');
 });
+
+// Sprint 4 carte 12 (US-054) — Historique des demandes pour l'employé
+Route::middleware(['auth', 'can:absences.view-own'])->group(function () {
+    Route::get('/mes-demandes-absence', [\App\Http\Controllers\DemandeAbsenceController::class, 'mesDemandes'])
+        ->name('mes-demandes-absence.index');
+});
