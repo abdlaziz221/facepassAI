@@ -115,3 +115,23 @@ Route::middleware(['auth', 'role:employe'])->group(function () {
     Route::get('/demandes-absence/create', [\App\Http\Controllers\DemandeAbsenceController::class, 'create'])->name('demandes-absence.create');
     Route::post('/demandes-absence',       [\App\Http\Controllers\DemandeAbsenceController::class, 'store'])->name('demandes-absence.store');
 });
+
+// Sprint 4 carte 10 (US-052) — Gestion des demandes par le gestionnaire/admin
+// Route::middleware(['can:absences.view-all'])->group(function () {
+Route::middleware(['auth', 'can:absences.view-all'])->group(function () {
+    Route::get('/demandes-absence', [\App\Http\Controllers\DemandeAbsenceController::class, 'index'])
+        ->name('demandes-absence.index');
+    Route::get('/demandes-absence/{demande}', [\App\Http\Controllers\DemandeAbsenceController::class, 'show'])
+        ->name('demandes-absence.show')
+        ->whereNumber('demande');
+});
+
+// Route::middleware(['can:absences.validate'])->group(function () {
+Route::middleware(['auth', 'can:absences.validate'])->group(function () {
+    Route::post('/demandes-absence/{demande}/valider', [\App\Http\Controllers\DemandeAbsenceController::class, 'valider'])
+        ->name('demandes-absence.valider')
+        ->whereNumber('demande');
+    Route::post('/demandes-absence/{demande}/refuser', [\App\Http\Controllers\DemandeAbsenceController::class, 'refuser'])
+        ->name('demandes-absence.refuser')
+        ->whereNumber('demande');
+});

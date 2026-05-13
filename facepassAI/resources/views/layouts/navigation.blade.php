@@ -64,9 +64,11 @@
                     Mes absences
                 </a>
             @elsecan('absences.view-all')
-                <a href="#" class="link-muted"
-                   title="Gestion des demandes d'absence — à venir (carte suivante)"
-                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; opacity: 0.55; cursor: not-allowed;">
+                <a href="{{ route('demandes-absence.index') }}"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+                          color: {{ request()->routeIs('demandes-absence.*') ? 'white' : '#9ca3af' }};
+                          background: {{ request()->routeIs('demandes-absence.*') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
+                          text-decoration: none; transition: all .15s;">
                     Demandes d'absence
                 </a>
             @endcan
