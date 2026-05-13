@@ -7,6 +7,7 @@ use App\Http\Requests\StoreDemandeAbsenceRequest;
 use App\Models\DemandeAbsence;
 use App\Models\EmployeProfile;
 use App\Models\User;
+use App\Notifications\DemandeAbsenceTraiteeNotification;
 use App\Notifications\NouvelleDemandeAbsenceNotification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -158,11 +159,19 @@ class DemandeAbsenceController extends Controller
             'gestionnaire_id'          => $request->user()->id,
             'commentaire_gestionnaire' => $validated['commentaire'] ?? null,
         ]);
+        $demande->load(['employe.user', 'gestionnaire']);
+
+        // Sprint 4 carte 11 (US-053) — Notifier l'employé du résultat
+        $employeUser = $demande->employe->user ?? null;
+        if ($employeUser) {
+            Notification::send($employeUser, new DemandeAbsenceTraiteeNotification($demande));
+        }
 
         Log::info('Demande d\'absence validée', [
-            'demande_id'      => $demande->id,
-            'gestionnaire_id' => $request->user()->id,
-            'employe_id'      => $demande->employe_id,
+            'demande_id'        => $demande->id,
+            'gestionnaire_id'   => $request->user()->id,
+            'employe_id'        => $demande->employe_id,
+            'employe_notifie'   => (bool) $employeUser,
         ]);
 
         return redirect()->route('demandes-absence.index')
@@ -192,12 +201,20 @@ class DemandeAbsenceController extends Controller
             'gestionnaire_id'          => $request->user()->id,
             'commentaire_gestionnaire' => $validated['commentaire'],
         ]);
+        $demande->load(['employe.user', 'gestionnaire']);
+
+        // Sprint 4 carte 11 (US-053) — Notifier l'employé du refus
+        $employeUser = $demande->employe->user ?? null;
+        if ($employeUser) {
+            Notification::send($employeUser, new DemandeAbsenceTraiteeNotification($demande));
+        }
 
         Log::info('Demande d\'absence refusée', [
-            'demande_id'      => $demande->id,
-            'gestionnaire_id' => $request->user()->id,
-            'employe_id'      => $demande->employe_id,
-            'motif_refus'     => $validated['commentaire'],
+            'demande_id'        => $demande->id,
+            'gestionnaire_id'   => $request->user()->id,
+            'employe_id'        => $demande->employe_id,
+            'motif_refus'       => $validated['commentaire'],
+            'employe_notifie'   => (bool) $employeUser,
         ]);
 
         return redirect()->route('demandes-absence.index')
