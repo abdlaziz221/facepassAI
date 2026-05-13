@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Demande d'absence d'un employé (Sprint 4 Horaires cartes 6 + 8, US-050/051).
@@ -13,6 +15,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class DemandeAbsence extends Model
 {
     use HasFactory;
+    use LogsActivity;
+
+    /** Sprint 6 carte 6 (US-091) — Configuration du log d'activité. */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['statut', 'commentaire_gestionnaire', 'gestionnaire_id', 'date_debut', 'date_fin', 'motif'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(fn (string $event) => match ($event) {
+                'created' => 'Demande d\'absence créée',
+                'updated' => 'Demande d\'absence mise à jour',
+                'deleted' => 'Demande d\'absence supprimée',
+                default   => $event,
+            })
+            ->useLogName('absences');
+    }
 
     protected $table = 'demandes_absence';
 

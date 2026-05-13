@@ -5,6 +5,8 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Jour férié ou exception de fermeture de l'entreprise (Sprint 4 carte 5, US-042).
@@ -17,6 +19,23 @@ use Illuminate\Database\Eloquent\Model;
 class JourFerie extends Model
 {
     use HasFactory;
+    use LogsActivity;
+
+    /** Sprint 6 carte 6 (US-091) — Log des CRUD de jours fériés. */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['date', 'libelle'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(fn (string $event) => match ($event) {
+                'created' => 'Jour férié ajouté',
+                'updated' => 'Jour férié modifié',
+                'deleted' => 'Jour férié supprimé',
+                default   => $event,
+            })
+            ->useLogName('jours_feries');
+    }
 
     protected $table = 'jours_feries';
 

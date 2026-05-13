@@ -187,3 +187,14 @@ Route::middleware(['auth', 'can:gestionnaires.manage'])
         Route::resource('gestionnaires', \App\Http\Controllers\Admin\GestionnaireController::class)
             ->except(['show']);
     });
+
+    // Sprint 6 cartes 6-9 (US-091/092) — Logs d'activité
+Route::middleware(['auth', 'can:logs.view'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/logs',        [\App\Http\Controllers\Admin\LogController::class, 'index'])
+            ->name('logs.index');
+        Route::get('/logs/export', [\App\Http\Controllers\Admin\LogController::class, 'export'])
+            ->name('logs.export');
+    });

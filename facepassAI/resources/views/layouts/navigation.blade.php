@@ -107,9 +107,11 @@
                 </a>
             @endcan
             @can('logs.view')
-                <a href="#" class="link-muted"
-                   title="Module Logs — à venir (Sprint 6)"
-                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; opacity: 0.55; cursor: not-allowed;">
+                <a href="{{ route('admin.logs.index') }}"
+                   style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+                          color: {{ request()->routeIs('admin.logs.*') ? 'white' : '#9ca3af' }};
+                          background: {{ request()->routeIs('admin.logs.*') ? 'rgba(99,102,241,0.12)' : 'transparent' }};
+                          text-decoration: none; transition: all .15s;">
                     Logs
                 </a>
             @endcan
