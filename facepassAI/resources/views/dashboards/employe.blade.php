@@ -10,7 +10,7 @@
                     {{ now()->locale('fr')->isoFormat('dddd D MMMM YYYY · HH:mm') }}
                 </p>
             </div>
-            <a href="#" class="btn-primary">
+            <a href="{{ route('pointages.create') }}" target="_blank" class="btn-primary">
                 <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/>
                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/>
@@ -19,37 +19,55 @@
             </a>
         </div>
     </x-slot>
-
-    {{-- KPIs personnels --}}
+    {{-- KPIs personnels (vrais chiffres calcules dans DashboardController::computeEmployeKpi) --}}
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
         <div class="card card-stat">
             <div class="label">Statut du jour</div>
             <div class="value" style="font-size: 22px;">
-                <span class="pill pill-success" style="font-size: 13px;">Présent</span>
+                @if (($employeKpi['statut'] ?? 'absent') === 'present')
+                    <span class="pill pill-success" style="font-size: 13px;">{{ $employeKpi['statut_label'] }}</span>
+                @elseif (($employeKpi['statut'] ?? 'absent') === 'sorti')
+                    <span class="pill" style="font-size: 13px;
+                          background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.3);
+                          color: #a5b4fc;">{{ $employeKpi['statut_label'] }}</span>
+                @else
+                    <span class="pill" style="font-size: 13px;
+                          background: rgba(107,114,128,0.12); border-color: rgba(107,114,128,0.3);
+                          color: #9ca3af;">Pas pointé</span>
+                @endif
             </div>
-            <div class="delta">Pointage à 08:42</div>
+            <div class="delta">
+                {{ $employeKpi['statut_detail'] ?? 'Aucun pointage aujourd\'hui' }}
+            </div>
         </div>
         <div class="card card-stat">
             <div class="label">Heures ce mois</div>
-            <div class="value">142<span style="font-size: 18px; color: #6b7280;">h</span></div>
-            <div class="delta">+8h vs mois dernier</div>
+            <div class="value">{{ $employeKpi['heures_mois'] ?? 0 }}<span style="font-size: 18px; color: #6b7280;">h</span></div>
+            <div class="delta" style="color: #6b7280;">
+                {{ $employeKpi['jours_pointes_mois'] ?? 0 }} jour(s) pointé(s)
+            </div>
         </div>
         <div class="card card-stat">
             <div class="label">Absences validées</div>
-            <div class="value">3</div>
+            <div class="value">{{ $employeKpi['absences_validees'] ?? 0 }}</div>
             <div class="delta" style="color: #6b7280;">cette année</div>
         </div>
         <div class="card card-stat">
             <div class="label">Solde congés</div>
-            <div class="value">12<span style="font-size: 18px; color: #6b7280;">j</span></div>
-            <div class="delta" style="color: #6b7280;">restants</div>
+            <div class="value">{{ $employeKpi['solde_conges'] ?? 30 }}<span style="font-size: 18px; color: #6b7280;">j</span></div>
+            <div class="delta" style="color: #6b7280;">
+                @if (($employeKpi['jours_pris'] ?? 0) > 0)
+                    sur 30 ({{ $employeKpi['jours_pris'] }} pris)
+                @else
+                    restants
+                @endif
+            </div>
         </div>
     </div>
-
     {{-- Actions rapides --}}
     <h2 class="section-title">Actions rapides</h2>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px;">
-        <a href="#" class="quick-action">
+        <a href="{{ route('mes-pointages.index') }}" class="quick-action">
             <span class="icon">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"/>
@@ -60,7 +78,7 @@
                 <div class="subtitle">Consulter mes derniers pointages</div>
             </div>
         </a>
-        <a href="#" class="quick-action">
+        <a href="{{ route('demandes-absence.create') }}" class="quick-action">
             <span class="icon">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/>
@@ -71,7 +89,18 @@
                 <div class="subtitle">Congé, maladie, autre motif</div>
             </div>
         </a>
-        <a href="#" class="quick-action">
+        <a href="{{ route('mes-demandes-absence.index') }}" class="quick-action">
+            <span class="icon">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"/>
+                </svg>
+            </span>
+            <div>
+                <div class="title">Mes demandes d'absence</div>
+                <div class="subtitle">Suivre le statut de mes demandes</div>
+            </div>
+        </a>
+        <a href="{{ route('mon-salaire.index') }}" class="quick-action">
             <span class="icon">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/>

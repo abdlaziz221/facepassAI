@@ -1,12 +1,24 @@
 <?php
-// app/Services/FaceRecognitionService.php
 
 namespace App\Services;
 
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Http\UploadedFile;
 
+/**
+ * Client HTTP vers le microservice Python face-service.
+ *
+ * Toutes les requêtes utilisent :
+ * - un timeout configurable (défaut 3s)
+ * - un retry automatique (défaut 2 tentatives, 200ms entre)
+ * - du logging en cas d'échec
+ *
+ * Endpoints consommés :
+ * - GET  /health
+ * - POST /encode  (multipart, photo)
+ * - POST /match   (json, 2 embeddings)
+ */
 class FaceRecognitionService
 {
     protected string $baseUrl;
@@ -15,59 +27,96 @@ class FaceRecognitionService
 
     public function __construct()
     {
-        $this->baseUrl = config('services.face_recognition.url', 'http://localhost:8001');
-        $this->timeout = config('services.face_recognition.timeout', 3);
-        $this->retries = config('services.face_recognition.retries', 2);
+        $this->baseUrl = rtrim(config('services.face_recognition.url', 'http://localhost:8001'), '/');
+        $this->timeout = (int) config('services.face_recognition.timeout', 3);
+        $this->retries = (int) config('services.face_recognition.retries', 2);
     }
 
+    /**
+     * Envoie une photo au microservice et retourne l'embedding 128D.
+     *
+     * @return array<int, float>|null  Embedding (128 floats) ou null si échec
+     */
     public function encode(UploadedFile $photo): ?array
     {
-        $attempts = 0;
-        $lastError = null;
+        try {
+            $response = Http::timeout($this->timeout)
+                ->retry($this->retries, 200, throw: false)
+                ->attach(
+                    'file',
+                    file_get_contents($photo->path()),
+                    $photo->getClientOriginalName()
+                )
+                ->post($this->baseUrl . '/encode');
 
-        while ($attempts < $this->retries) {
-            try {
-                $response = Http::timeout($this->timeout)
-                    ->attach('file', fopen($photo->path(), 'r'), $photo->getClientOriginalName())
-                    ->post($this->baseUrl . '/encode');
-
-                if ($response->successful()) {
-                    $data = $response->json();
-                    return $data['embedding'] ?? null;
-                }
-
-                $lastError = "HTTP " . $response->status();
-                Log::warning("Face encode attempt " . ($attempts + 1) . " failed", [
-                    'status' => $response->status(),
-                    'response' => $response->body()
-                ]);
-
-            } catch (\Exception $e) {
-                $lastError = $e->getMessage();
-                Log::error("Face encode exception attempt " . ($attempts + 1), [
-                    'error' => $lastError
-                ]);
+            if ($response->successful()) {
+                return $response->json('embedding');
             }
 
-            $attempts++;
-            if ($attempts < $this->retries) {
-                sleep(1);
-            }
+            Log::warning('face-service /encode a échoué', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+            return null;
+        } catch (\Throwable $e) {
+            Log::error('face-service /encode exception', [
+                'error' => $e->getMessage(),
+            ]);
+            return null;
         }
-
-        Log::error("Face encode failed after {$this->retries} attempts", [
-            'last_error' => $lastError
-        ]);
-
-        return null;
     }
 
+    /**
+     * Compare deux embeddings 128D et retourne le résultat du match.
+     *
+     * @param array<int, float> $embedding1
+     * @param array<int, float> $embedding2
+     * @param float|null        $threshold  Seuil custom (sinon défaut microservice)
+     * @return array{match: bool, distance: float, threshold: float, confidence: float}|null
+     */
+    public function match(array $embedding1, array $embedding2, ?float $threshold = null): ?array
+    {
+        $payload = [
+            'embedding1' => $embedding1,
+            'embedding2' => $embedding2,
+        ];
+        if ($threshold !== null) {
+            $payload['threshold'] = $threshold;
+        }
+
+        try {
+            $response = Http::timeout($this->timeout)
+                ->retry($this->retries, 200, throw: false)
+                ->asJson()
+                ->post($this->baseUrl . '/match', $payload);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            Log::warning('face-service /match a échoué', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
+            return null;
+        } catch (\Throwable $e) {
+            Log::error('face-service /match exception', [
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Vérifie que le microservice répond. Utile pour healthcheck Laravel.
+     */
     public function isAvailable(): bool
     {
         try {
-            $response = Http::timeout(2)->get($this->baseUrl . '/health');
-            return $response->successful();
-        } catch (\Exception $e) {
+            return Http::timeout(2)
+                ->get($this->baseUrl . '/health')
+                ->successful();
+        } catch (\Throwable $e) {
             return false;
         }
     }

@@ -34,6 +34,9 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+     Route::post('/notifications/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.markAllRead');
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.markRead');
+    Route::get('/notifications/summary', [\App\Http\Controllers\NotificationController::class, 'summary'])->name('notifications.summary');
 });
 
 /*
@@ -53,12 +56,20 @@ Route::middleware('auth')
 | Routes protégées par rôle (Sprint 1, US-015) — exemples
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'role:administrateur'])
+
+
+   Route::middleware(['auth', 'role:administrateur'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
-        Route::get('/test', fn () => '<h1>✅ Espace Administrateur</h1><p>Accès autorisé. Routes Sprint 6 à venir : gestionnaires, logs.</p>')
-            ->name('test');
+        // ... routes existantes ...
+        Route::get('/horaires',  [\App\Http\Controllers\HoraireConfigController::class, 'edit'])->name('horaires.edit');
+        Route::put('/horaires',  [\App\Http\Controllers\HoraireConfigController::class, 'update'])->name('horaires.update');
+
+        // 👇 AJOUTE CES 3 LIGNES POUR LES JOURS FÉRIÉS
+        Route::get('/jours-feries',                    [\App\Http\Controllers\JourFerieController::class, 'index'])->name('jours-feries.index');
+        Route::post('/jours-feries',                   [\App\Http\Controllers\JourFerieController::class, 'store'])->name('jours-feries.store');
+        Route::delete('/jours-feries/{jour}',          [\App\Http\Controllers\JourFerieController::class, 'destroy'])->name('jours-feries.destroy');
     });
 
 Route::middleware(['auth', 'role:gestionnaire|administrateur'])
@@ -83,3 +94,113 @@ Route::middleware(['auth', 'role:consultant|gestionnaire|administrateur'])
 |--------------------------------------------------------------------------
 */
 require __DIR__.'/auth.php';
+
+
+use App\Http\Controllers\PointageController;
+
+// // Sprint 3 — Pointage biométrique public (kiosque)
+// Route::post('/pointages', [PointageController::class, 'store'])->name('pointages.store');
+// Sprint 3 — Pointage biométrique (kiosque public)
+Route::get('/pointer', [PointageController::class, 'create'])->name('pointages.create');
+// Sprint 4 US-036 — Pointage manuel (gestionnaire / admin)
+Route::middleware(['auth', 'role:gestionnaire|administrateur'])->group(function () {
+    Route::get('/pointages/manuel',  [PointageController::class, 'manualCreate'])->name('pointages.manual.create');
+    Route::post('/pointages/manuel', [PointageController::class, 'manualStore'])->name('pointages.manual.store');
+});
+Route::post('/pointages', [PointageController::class, 'store'])->name('pointages.store');
+
+
+// Sprint 4 Horaires US-050 — Demandes d'absence (employé)
+Route::middleware(['auth', 'role:employe'])->group(function () {
+    Route::get('/demandes-absence/create', [\App\Http\Controllers\DemandeAbsenceController::class, 'create'])->name('demandes-absence.create');
+    Route::post('/demandes-absence',       [\App\Http\Controllers\DemandeAbsenceController::class, 'store'])->name('demandes-absence.store');
+});
+
+// Sprint 4 carte 10 (US-052) — Gestion des demandes par le gestionnaire/admin
+// Route::middleware(['can:absences.view-all'])->group(function () {
+Route::middleware(['auth', 'can:absences.view-all'])->group(function () {
+    Route::get('/demandes-absence', [\App\Http\Controllers\DemandeAbsenceController::class, 'index'])
+        ->name('demandes-absence.index');
+    Route::get('/demandes-absence/{demande}', [\App\Http\Controllers\DemandeAbsenceController::class, 'show'])
+        ->name('demandes-absence.show')
+        ->whereNumber('demande');
+});
+
+// Route::middleware(['can:absences.validate'])->group(function () {
+Route::middleware(['auth', 'can:absences.validate'])->group(function () {
+    Route::post('/demandes-absence/{demande}/valider', [\App\Http\Controllers\DemandeAbsenceController::class, 'valider'])
+        ->name('demandes-absence.valider')
+        ->whereNumber('demande');
+    Route::post('/demandes-absence/{demande}/refuser', [\App\Http\Controllers\DemandeAbsenceController::class, 'refuser'])
+        ->name('demandes-absence.refuser')
+        ->whereNumber('demande');
+});
+
+// Sprint 4 carte 12 (US-054) — Historique des demandes pour l'employé
+Route::middleware(['auth', 'can:absences.view-own'])->group(function () {
+    Route::get('/mes-demandes-absence', [\App\Http\Controllers\DemandeAbsenceController::class, 'mesDemandes'])
+        ->name('mes-demandes-absence.index');
+});
+
+// Sprint 5 carte 1 (US-060) — Historique complet des pointages
+Route::middleware(['auth', 'can:pointages.view-all'])->group(function () {
+    Route::get('/historique-pointages', [\App\Http\Controllers\PointageController::class, 'historique'])
+        ->name('pointages.historique');
+});
+
+// Sprint 5 carte 4 (US-062) — Retards & départs anticipés
+Route::middleware(['auth', 'can:pointages.view-all'])->group(function () {
+    Route::get('/retards-departs', [\App\Http\Controllers\PointageController::class, 'retards'])
+        ->name('pointages.retards');
+    Route::get('/retards-departs/export', [\App\Http\Controllers\PointageController::class, 'exportRetards'])
+        ->name('pointages.retards.export');
+});
+// Sprint 5 cartes 6 & 7 — Routes de test pour vérifier l'install dompdf + excel
+Route::middleware(['auth', 'can:rapports.export'])->group(function () {
+    Route::get('/test-export-pdf',   [\App\Http\Controllers\ExportTestController::class, 'pdf'])
+        ->name('test.export.pdf');
+    Route::get('/test-export-excel', [\App\Http\Controllers\ExportTestController::class, 'excel'])
+        ->name('test.export.excel');
+});
+
+// Sprint 5 cartes 8-9-10 (US-070 / US-071 / US-072) — Module Rapports
+Route::middleware(['auth', 'can:rapports.export'])->group(function () {
+    Route::get('/rapports', [\App\Http\Controllers\RapportController::class, 'index'])
+        ->name('rapports.index');
+    Route::post('/rapports/generer', [\App\Http\Controllers\RapportController::class, 'generer'])
+        ->name('rapports.generer');
+});
+
+// Sprint 6 carte 2 (US-080) — Vue Mon Salaire (employé)
+Route::middleware(['auth', 'can:salaire.view-own'])->group(function () {
+    Route::get('/mon-salaire', [\App\Http\Controllers\MonSalaireController::class, 'index'])
+        ->name('mon-salaire.index');
+        Route::get('/mon-salaire/pdf', [\App\Http\Controllers\MonSalaireController::class, 'pdf'])
+    ->name('mon-salaire.pdf');
+});
+
+// Sprint 6 carte 5 (US-090) — CRUD gestionnaires (admin)
+Route::middleware(['auth', 'can:gestionnaires.manage'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::resource('gestionnaires', \App\Http\Controllers\Admin\GestionnaireController::class)
+            ->except(['show']);
+    });
+
+    // Sprint 6 cartes 6-9 (US-091/092) — Logs d'activité
+Route::middleware(['auth', 'can:logs.view'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/logs',        [\App\Http\Controllers\Admin\LogController::class, 'index'])
+            ->name('logs.index');
+        Route::get('/logs/export', [\App\Http\Controllers\Admin\LogController::class, 'export'])
+            ->name('logs.export');
+    });
+
+    // Sprint 6 — Mes pointages (employé)
+Route::middleware(['auth', 'can:pointages.view-own'])->group(function () {
+    Route::get('/mes-pointages', [\App\Http\Controllers\PointageController::class, 'mesPointages'])
+        ->name('mes-pointages.index');
+});

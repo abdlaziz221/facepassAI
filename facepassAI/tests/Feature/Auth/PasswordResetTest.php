@@ -2,15 +2,28 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Models\User;
+use App\Models\Employe;
+use App\Notifications\ResetPasswordFr;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
+/**
+ * Tests du reset password Breeze, adaptés à notre app :
+ * - Utilisateur créé via Employe::factory() (a un rôle, est actif)
+ * - On assert la notification française ResetPasswordFr (Sprint 1 T7)
+ */
 class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(RolePermissionSeeder::class);
+    }
 
     public function test_reset_password_link_screen_can_be_rendered(): void
     {
@@ -23,23 +36,24 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->create();
+        $user = Employe::factory()->create();
 
         $this->post('/forgot-password', ['email' => $user->email]);
 
-        Notification::assertSentTo($user, ResetPassword::class);
+        // Notre app envoie ResetPasswordFr (custom français), pas le ResetPassword par défaut
+        Notification::assertSentTo($user, ResetPasswordFr::class);
     }
 
     public function test_reset_password_screen_can_be_rendered(): void
     {
         Notification::fake();
 
-        $user = User::factory()->create();
+        $user = Employe::factory()->create();
 
         $this->post('/forgot-password', ['email' => $user->email]);
 
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
-            $response = $this->get('/reset-password/'.$notification->token);
+        Notification::assertSentTo($user, ResetPasswordFr::class, function ($notification) {
+            $response = $this->get('/reset-password/' . $notification->token);
 
             $response->assertStatus(200);
 
@@ -51,15 +65,15 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->create();
+        $user = Employe::factory()->create();
 
         $this->post('/forgot-password', ['email' => $user->email]);
 
-        Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+        Notification::assertSentTo($user, ResetPasswordFr::class, function ($notification) use ($user) {
             $response = $this->post('/reset-password', [
-                'token' => $notification->token,
-                'email' => $user->email,
-                'password' => 'password',
+                'token'                 => $notification->token,
+                'email'                 => $user->email,
+                'password'              => 'password',
                 'password_confirmation' => 'password',
             ]);
 

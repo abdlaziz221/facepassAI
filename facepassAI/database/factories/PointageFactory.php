@@ -2,57 +2,61 @@
 
 namespace Database\Factories;
 
-use App\Models\Employe;
+use App\Models\EmployeProfile;
 use App\Models\Pointage;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * Factory Pointage — alignée sur la migration 2026_05_09_005114.
+ *
+ * employe_id pointe sur la table employes (EmployeProfile),
+ * pas directement sur users — on utilise donc EmployeProfile::factory().
+ */
 class PointageFactory extends Factory
 {
     protected $model = Pointage::class;
 
     public function definition(): array
     {
-        $types = ['arrivee', 'debut_pause', 'fin_pause', 'depart'];
-        $statuts = ['valide', 'en_retard', 'depart_anticipe'];
-        
         return [
-            'employe_id' => Employe::factory(),
-            'jours_travail_id' => null,  // Peut être null au début
-            'date_heure' => $this->faker->dateTimeBetween('-1 month', 'now'),
-            'type' => $this->faker->randomElement($types),
-            'statut' => $this->faker->randomElement($statuts),
+            'employe_id'    => EmployeProfile::factory(),
+            'type'          => $this->faker->randomElement(Pointage::TYPES),
+            'photo_capture' => null,
+            'manuel'        => false,
+            'motif_manuel'  => null,
         ];
     }
 
-    // Pointage en retard
-    public function enRetard(): static
+    /** State : pointage d'arrivée matinale. */
+    public function arrivee(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'statut' => 'en_retard',
-        ]);
+        return $this->state(fn () => ['type' => Pointage::TYPE_ARRIVEE]);
     }
 
-    // Pointage départ anticipé
-    public function departAnticipe(): static
+    /** State : départ en pause déjeuner. */
+    public function debutPause(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'statut' => 'depart_anticipe',
-        ]);
+        return $this->state(fn () => ['type' => Pointage::TYPE_DEBUT_PAUSE]);
     }
 
-    // Pointage validé (normal)
-    public function valide(): static
+    /** State : retour de pause déjeuner. */
+    public function finPause(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'statut' => 'valide',
-        ]);
+        return $this->state(fn () => ['type' => Pointage::TYPE_FIN_PAUSE]);
     }
 
-    // Pointage pour un type spécifique
-    public function deType(string $type): static
+    /** State : départ du soir. */
+    public function depart(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'type' => $type,
+        return $this->state(fn () => ['type' => Pointage::TYPE_DEPART]);
+    }
+
+    /** State : pointage saisi manuellement par un gestionnaire. */
+    public function manuel(string $motif = 'Oubli de badgeage'): static
+    {
+        return $this->state(fn () => [
+            'manuel'       => true,
+            'motif_manuel' => $motif,
         ]);
     }
 }
