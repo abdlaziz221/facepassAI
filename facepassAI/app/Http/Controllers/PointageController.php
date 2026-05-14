@@ -43,6 +43,33 @@ class PointageController extends Controller
         return view('pointer.index');
     }
 
+    /**
+     * Sprint 6 — Mes pointages (employé connecté uniquement).
+     * Liste paginée de SES pointages, sans filtre exposé.
+     */
+    public function mesPointages(Request $request): View
+    {
+        $user = $request->user();
+        $profile = EmployeProfile::where('user_id', $user->id)->first();
+
+        if (!$profile) {
+            $pointages = Pointage::query()->whereRaw('1 = 0')->paginate(20);
+            return view('pointer.mes-pointages', [
+                'pointages' => $pointages,
+                'profile' => null,
+            ]);
+        }
+
+        $pointages = Pointage::query()
+            ->where('employe_id', $profile->id)
+            ->orderByDesc('created_at')
+            ->paginate(20);
+
+        $retardService = \App\Services\RetardService::fromCurrent();
+
+        return view('pointer.mes-pointages', compact('pointages', 'profile', 'retardService'));
+    }
+
     // ========================================================================
     // Sprint 5 carte 1 (US-060) — Historique complet des pointages
     // ========================================================================

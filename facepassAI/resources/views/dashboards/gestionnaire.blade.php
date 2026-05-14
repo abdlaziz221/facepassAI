@@ -88,17 +88,6 @@
                 <div class="subtitle">CRUD, profils, photos faciales</div>
             </div>
         </a>
-        <a href="{{ route('admin.horaires.edit') }}" class="quick-action">
-            <span class="icon">
-                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-            </span>
-            <div>
-                <div class="title">Configurer les horaires</div>
-                <div class="subtitle">Jours ouvrables, jours fériés</div>
-            </div>
-        </a>
         <a href="{{ route('rapports.index') }}" class="quick-action">
             <span class="icon">
                 <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">

@@ -81,7 +81,8 @@
                     Rapports
                 </a>
             @endcan
-            @can('horaires.configure')
+            {{-- Horaires + Jours fériés : admin uniquement (routes /admin/* protégées) --}}
+            @if ($role === 'administrateur')
                 <a href="{{ route('admin.horaires.edit') }}"
                    style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
                           color: {{ request()->routeIs('admin.horaires.*') ? 'white' : '#9ca3af' }};
@@ -96,7 +97,7 @@
                           text-decoration: none; transition: all .15s;">
                     Jours fériés
                 </a>
-            @endcan
+            @endif
             @can('gestionnaires.manage')
                 <a href="{{ route('admin.gestionnaires.index') }}"
                    style="padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;

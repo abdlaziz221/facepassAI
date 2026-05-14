@@ -198,3 +198,9 @@ Route::middleware(['auth', 'can:logs.view'])
         Route::get('/logs/export', [\App\Http\Controllers\Admin\LogController::class, 'export'])
             ->name('logs.export');
     });
+
+    // Sprint 6 — Mes pointages (employé)
+Route::middleware(['auth', 'can:pointages.view-own'])->group(function () {
+    Route::get('/mes-pointages', [\App\Http\Controllers\PointageController::class, 'mesPointages'])
+        ->name('mes-pointages.index');
+});
