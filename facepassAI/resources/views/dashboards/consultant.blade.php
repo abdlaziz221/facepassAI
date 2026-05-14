@@ -10,27 +10,27 @@
             </p>
         </div>
     </x-slot>
-    {{-- KPIs équipe --}}
+    {{-- KPIs équipe (vraies valeurs calculées par DashboardKpiService) --}}
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
         <div class="card card-stat">
-            <div class="label">Total Employés</div>
-            <div class="value">{{ $stats['employes'] }}</div>
-            <div class="delta">actifs aujourd'hui</div>
+            <div class="label">Total employés</div>
+            <div class="value">{{ $kpi['total_employes'] ?? 0 }}</div>
+            <div class="delta">en activité</div>
         </div>
         <div class="card card-stat">
             <div class="label">Présents aujourd'hui</div>
-            <div class="value">{{ max(0, $stats['employes'] - 2) }}</div>
-            <div class="delta">94% de présence</div>
+            <div class="value">{{ $kpi['presents'] ?? 0 }}</div>
+            <div class="delta">{{ $kpi['taux_presence'] ?? 0 }}% de présence</div>
         </div>
         <div class="card card-stat">
-            <div class="label">Retards ce mois</div>
-            <div class="value">7</div>
-            <div class="delta" style="color: #fde68a;">+2 vs mois dernier</div>
+            <div class="label">Retards aujourd'hui</div>
+            <div class="value">{{ $kpi['retards'] ?? 0 }}</div>
+            <div class="delta" style="color: #fde68a;">arrivées après l'heure</div>
         </div>
         <div class="card card-stat">
-            <div class="label">Rapports générés</div>
-            <div class="value">12</div>
-            <div class="delta" style="color: #6b7280;">ce mois</div>
+            <div class="label">Demandes en attente</div>
+            <div class="value">{{ $kpi['demandes_en_attente'] ?? 0 }}</div>
+            <div class="delta" style="color: #6b7280;">à traiter</div>
         </div>
     </div>
     {{-- Actions rapides --}}

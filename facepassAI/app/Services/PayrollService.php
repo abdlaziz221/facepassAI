@@ -130,11 +130,17 @@ class PayrollService
 
         $datesPointes = $pointages->map(fn ($p) => $p->created_at->format('Y-m-d'))->unique();
         $today = Carbon::today();
+        // L'employé n'existait pas avant sa date d'embauche → ne pas le compter absent
+        $dateEmbauche = $emp->created_at ? Carbon::parse($emp->created_at)->startOfDay() : null;
 
         $joursAbsenceDetail = [];
         foreach ($joursOuvrables as $jour) {
             // Pas d'absence dans le futur
             if ($jour->greaterThan($today)) {
+                continue;
+            }
+            // Pas d'absence avant la date d'embauche
+            if ($dateEmbauche !== null && $jour->lessThan($dateEmbauche)) {
                 continue;
             }
 

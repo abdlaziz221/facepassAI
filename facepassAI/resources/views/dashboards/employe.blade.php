@@ -19,29 +19,49 @@
             </a>
         </div>
     </x-slot>
-    {{-- KPIs personnels --}}
+    {{-- KPIs personnels (vrais chiffres calcules dans DashboardController::computeEmployeKpi) --}}
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
         <div class="card card-stat">
             <div class="label">Statut du jour</div>
             <div class="value" style="font-size: 22px;">
-                <span class="pill pill-success" style="font-size: 13px;">Présent</span>
+                @if (($employeKpi['statut'] ?? 'absent') === 'present')
+                    <span class="pill pill-success" style="font-size: 13px;">{{ $employeKpi['statut_label'] }}</span>
+                @elseif (($employeKpi['statut'] ?? 'absent') === 'sorti')
+                    <span class="pill" style="font-size: 13px;
+                          background: rgba(99,102,241,0.12); border-color: rgba(99,102,241,0.3);
+                          color: #a5b4fc;">{{ $employeKpi['statut_label'] }}</span>
+                @else
+                    <span class="pill" style="font-size: 13px;
+                          background: rgba(107,114,128,0.12); border-color: rgba(107,114,128,0.3);
+                          color: #9ca3af;">Pas pointé</span>
+                @endif
             </div>
-            <div class="delta">Pointage à 08:42</div>
+            <div class="delta">
+                {{ $employeKpi['statut_detail'] ?? 'Aucun pointage aujourd\'hui' }}
+            </div>
         </div>
         <div class="card card-stat">
             <div class="label">Heures ce mois</div>
-            <div class="value">142<span style="font-size: 18px; color: #6b7280;">h</span></div>
-            <div class="delta">+8h vs mois dernier</div>
+            <div class="value">{{ $employeKpi['heures_mois'] ?? 0 }}<span style="font-size: 18px; color: #6b7280;">h</span></div>
+            <div class="delta" style="color: #6b7280;">
+                {{ $employeKpi['jours_pointes_mois'] ?? 0 }} jour(s) pointé(s)
+            </div>
         </div>
         <div class="card card-stat">
             <div class="label">Absences validées</div>
-            <div class="value">3</div>
+            <div class="value">{{ $employeKpi['absences_validees'] ?? 0 }}</div>
             <div class="delta" style="color: #6b7280;">cette année</div>
         </div>
         <div class="card card-stat">
             <div class="label">Solde congés</div>
-            <div class="value">12<span style="font-size: 18px; color: #6b7280;">j</span></div>
-            <div class="delta" style="color: #6b7280;">restants</div>
+            <div class="value">{{ $employeKpi['solde_conges'] ?? 30 }}<span style="font-size: 18px; color: #6b7280;">j</span></div>
+            <div class="delta" style="color: #6b7280;">
+                @if (($employeKpi['jours_pris'] ?? 0) > 0)
+                    sur 30 ({{ $employeKpi['jours_pris'] }} pris)
+                @else
+                    restants
+                @endif
+            </div>
         </div>
     </div>
     {{-- Actions rapides --}}
